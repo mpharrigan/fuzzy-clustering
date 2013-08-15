@@ -20,39 +20,45 @@ def _membership_frac(point_j, centroid_i, fuzziness, dist):
     fraction = 1.0 / dist(point_j, centroid_i)
     exponent = 1.0 / (fuzziness - 1)
     value = fraction ** exponent
-    return value
-    
+    return value        
+
 def calculate_membership(i, j, points, centroids, fuzziness, dist, debug):
     """Calculate the membership u_ij given data points and centroids."""
     
-    n_clusters = len(centroids)
-    
+    n_clusters = len(centroids)    
     numerator = _membership_frac(points[j], centroids[i], fuzziness, dist)
     
     if numerator < 0:
         return 1.0
-    denomonat = 0.0
-    for k in xrange(n_clusters):
-        denomonat += _membership_frac(points[j], centroids[k], fuzziness, dist)
-        
-    result = numerator / denomonat
     
-    if debug:
-        print("Membership (%d,%d) is %f" % (i, j, result))
+#     denomonat = 0.0
+#     for k in xrange(n_clusters):
+#         denomonat += _membership_frac(points[j], centroids[k], fuzziness, dist)
+#         
+#     result = numerator / denomonat
+#     
+#     if debug:
+#         print("Membership (%d,%d) is %f" % (i, j, result))
+    # TODO: Cleanup ^^
     
-    return result
+    return numerator
 
 def calculate_memberships(points, centroids, fuzziness, dist, debug=False):
     """Calculate memberships of points relative to centroids."""
     n_points = len(points)
     n_clusters = len(centroids)
     
-    memberships = np.zeros((n_clusters, n_points))
+    memberships = np.zeros((n_points, n_clusters))
     
     for j in xrange(n_points):
         for i in xrange(n_clusters):
-            memberships[i, j] = calculate_membership(i, j, points, centroids,
+            memberships[j, i] = calculate_membership(i, j, points, centroids,
                                                      fuzziness, dist, debug)
+        # Normalize
+        memb_denom = np.sum(memberships, axis=1)[j]
+        memberships[j, :] = memberships[j, :] / memb_denom
+            
+            
             
     return memberships
             
@@ -63,7 +69,7 @@ def calculate_centroid(i, points, memberships, fuzziness):
     numerator = 0.0
     denomonat = 0.0
     for j in xrange(n_points):
-        term = memberships[i, j] ** fuzziness
+        term = memberships[j, i] ** fuzziness
         numerator += term * points[j]
         denomonat += term
         
@@ -209,7 +215,7 @@ def plot_points_with_alpha(points, memberships):
                    ]
     base_colors = np.array(base_colors) / 255.
     
-    memberships = memberships.transpose()
+    
     assert len(memberships) == len(points), \
         'Membership (%d) and points (%d) must match' \
         % (len(memberships), len(points))
@@ -237,7 +243,7 @@ def get_hard_state_list(centroids, traj, fuzziness, dist):
     a list of membership vectors that has been 'hardened' to be of the form
     [0, ..., 0, 1, 0, ..., 0].
     """
-    memberships = calculate_memberships(traj, centroids, fuzziness, dist).transpose()
+    memberships = calculate_memberships(traj, centroids, fuzziness, dist)
     
     state_list_classic = list()
     state_list_new = list()
@@ -254,13 +260,8 @@ def get_hard_state_list(centroids, traj, fuzziness, dist):
 def get_soft_state_list(centroids, traj, fuzziness, dist):
     """From a trajectory and a clustering scheme, get the list of membership
     vectors through which the trajectory traverses."""
-    memberships = calculate_memberships(traj, centroids, fuzziness, dist).transpose()
-    
-    state_list = list()    
-    for memb in memberships:
-        state_list.append(memb)        
-            
-    return state_list
+    memberships = calculate_memberships(traj, centroids, fuzziness, dist)         
+    return memberships
     
 def get_giant_state_list(centroids, trajs, fuzziness, dist, soft=True, lag_time=1):
     """Get a matrix of pairs of membership vectors.
@@ -280,11 +281,10 @@ def get_giant_state_list(centroids, trajs, fuzziness, dist, soft=True, lag_time=
         else:
             _, state_list = get_hard_state_list(centroids, traj, fuzziness, dist)
         
-        from_states = np.array(state_list[:-lag_time: lag_time])
-        to_states = np.array(state_list[lag_time:: lag_time])
+        from_states = state_list[:-lag_time: lag_time]
+        to_states = state_list[lag_time:: lag_time]
         
-        assert len(from_states) == len(to_states)
-        
+        assert len(from_states) == len(to_states)        
         
         n_points = len(from_states)
         pairs = np.zeros((n_points, n_times, n_clusters))
@@ -331,7 +331,9 @@ def build_new(centroids, trajs, fuzziness, dist, soft=True, neigen=4, show=False
     """
     n_states = len(centroids)
     time_pairs = get_giant_state_list(centroids, trajs, fuzziness, dist, soft=soft)
+    print("Got state list")
     counts_mat = buildmsm.get_counts_from_pairs(time_pairs, n_states)
+    print("Got count matrix")
     rev_counts, t_matrix, populations, mapping = msml.build_msm(counts_mat)
     
     if soft:
@@ -390,8 +392,6 @@ def fcm_using_classic_clusters(cluster_points, trajs_old, trajs_new,
     plot_centroids(centroids)
     if show: pp.show()
     
-    print("Calculating memberships...")
-    memberships = calculate_memberships(cluster_points, centroids, fuzziness, dist) 
     print("Building msm...")
     build_new(centroids, trajs_new, fuzziness, dist, soft=True, show=show)
     
@@ -408,7 +408,7 @@ def classic(trajs, n_clusters, n_medoid_iters, metric, dim=2, lag_time=1, show=F
     rev_counts, t_matrix, populations, mapping = msml.build_msm(counts)
     analyze_msm(t_matrix, centroids_nf, 'Classic, n_clusters=%d' % n_clusters, show=show)
 
-def demonstrate(show, classic_k=200, new_k=3, num_med_iters=1, lag_time=10):
+def demonstrate(show, big_k=200, small_k=3, num_med_iters=1, lag_time=10):
     """Run through various schemes for comparison."""
     clustering.logger.setLevel('ERROR')
 
@@ -417,17 +417,17 @@ def demonstrate(show, classic_k=200, new_k=3, num_med_iters=1, lag_time=10):
     metric = euclidean.Euclidean2d()
     
     # Build msm in the classic regime (high number of clusters)
-    classic(trajs_old, n_clusters=classic_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=False)
+    classic(trajs_old, n_clusters=big_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=False)
     
     # Build msm using classic methods with a small number of clusters
-    classic(trajs_old, n_clusters=new_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=False)
+    classic(trajs_old, n_clusters=small_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=False)
     
     # Build msm using new fuzzy clusters
     points_sample = get_data.get_points(stride=10)
     trajs_new = get_data.get_trajs(retrieve='justpoints')
-    fcm(points_sample, trajs_new, k=new_k, show=False)
+    fcm(points_sample, trajs_new, k=small_k, show=False)
     
-    fcm_using_classic_clusters(points_sample, trajs_old=trajs_old, trajs_new=trajs_new, n_clusters=classic_k, n_medoid_iters=num_med_iters, metric=metric, show=True)
+    fcm_using_classic_clusters(points_sample, trajs_old=trajs_old, trajs_new=trajs_new, n_clusters=big_k, n_medoid_iters=num_med_iters, metric=metric, show=True)
 
 if __name__ == "__main__":
     demonstrate(show=True)
