@@ -1,16 +1,22 @@
 from matplotlib import pyplot as pp
 from msmbuilder import MSMLib as msml, msm_analysis as msma, clustering
-import fuzzy.buildmsm as buildmsm
-import fuzzy.euclidean as euclidean
-import fuzzy.get_data as get_data
-import fuzzy.mullerforce as mullerforce
+import buildmsm as buildmsm
+import euclidean as euclidean
+import get_data as get_data
+import mullerforce as mullerforce
 import numpy as np
 import random
 import scipy.sparse
-    
+
+eps = 1e-10
     
 def _membership_frac(point_j, centroid_i, fuzziness, dist):
     """A term in computing membership."""
+    
+    d2 = dist(point_j, centroid_i)
+    if d2 < eps:
+        return -1
+    
     fraction = 1.0 / dist(point_j, centroid_i)
     exponent = 1.0 / (fuzziness - 1)
     value = fraction ** exponent
@@ -22,6 +28,9 @@ def calculate_membership(i, j, points, centroids, fuzziness, dist, debug):
     n_clusters = len(centroids)
     
     numerator = _membership_frac(points[j], centroids[i], fuzziness, dist)
+    
+    if numerator < 0:
+        return 1.0
     denomonat = 0.0
     for k in xrange(n_clusters):
         denomonat += _membership_frac(points[j], centroids[k], fuzziness, dist)
@@ -372,9 +381,23 @@ def fcm(cluster_points, trajs, fuzziness=2.0, dist=euclidean_distance, max_iter=
     
     build_new(centroids, trajs, fuzziness, dist, soft=True, show=show)
     
+def fcm_using_classic_clusters(cluster_points, trajs_old, trajs_new,
+                               n_clusters, n_medoid_iters, metric, dim=2, fuzziness=2.0, dist=euclidean_distance, show=False):
+    hkm = clustering.HybridKMedoids(metric, trajs_old, k=n_clusters, local_num_iters=n_medoid_iters)
+    centroids_msmb = hkm.get_generators_as_traj()
+    centroids = centroids_msmb['XYZList'][:, 0, 0:dim]
+    
+    plot_centroids(centroids)
+    if show: pp.show()
+    
+    print("Calculating memberships...")
+    memberships = calculate_memberships(cluster_points, centroids, fuzziness, dist) 
+    print("Building msm...")
+    build_new(centroids, trajs_new, fuzziness, dist, soft=True, show=show)
+    
 def classic(trajs, n_clusters, n_medoid_iters, metric, dim=2, lag_time=1, show=False):
     """Use classic clustering methods."""
-    hkm = clustering.HybridKMedoids(metric, trajs, n_clusters=n_clusters, local_num_iters=n_medoid_iters)
+    hkm = clustering.HybridKMedoids(metric, trajs, k=n_clusters, local_num_iters=n_medoid_iters)
     centroids = hkm.get_generators_as_traj()
     
     centroids_nf = centroids['XYZList'][:, 0, 0:dim]
@@ -385,24 +408,26 @@ def classic(trajs, n_clusters, n_medoid_iters, metric, dim=2, lag_time=1, show=F
     rev_counts, t_matrix, populations, mapping = msml.build_msm(counts)
     analyze_msm(t_matrix, centroids_nf, 'Classic, n_clusters=%d' % n_clusters, show=show)
 
-def demonstrate(show, classic_k=200, new_k=10, num_med_iters=1, lag_time=10):
+def demonstrate(show, classic_k=200, new_k=3, num_med_iters=1, lag_time=10):
     """Run through various schemes for comparison."""
     clustering.logger.setLevel('ERROR')
 
     # Load shimmed trajectories and a metric for interfacing with msmbuilder
-    trajs = get_data.get_trajs(retrieve='shimtrajs')
+    trajs_old = get_data.get_trajs(retrieve='shimtrajs')
     metric = euclidean.Euclidean2d()
     
     # Build msm in the classic regime (high number of clusters)
-    classic(trajs, n_clusters=classic_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=True)
+    classic(trajs_old, n_clusters=classic_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=False)
     
     # Build msm using classic methods with a small number of clusters
-    classic(trajs, n_clusters=new_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=True)
+    classic(trajs_old, n_clusters=new_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=False)
     
     # Build msm using new fuzzy clusters
     points_sample = get_data.get_points(stride=10)
-    trajs = get_data.get_trajs(retrieve='justpoints')
-    fcm(points_sample, trajs, k=new_k, show=True)
+    trajs_new = get_data.get_trajs(retrieve='justpoints')
+    fcm(points_sample, trajs_new, k=new_k, show=False)
+    
+    fcm_using_classic_clusters(points_sample, trajs_old=trajs_old, trajs_new=trajs_new, n_clusters=classic_k, n_medoid_iters=num_med_iters, metric=metric, show=True)
 
 if __name__ == "__main__":
     demonstrate(show=True)

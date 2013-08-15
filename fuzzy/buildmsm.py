@@ -112,6 +112,8 @@ def _corr_product(from_points, to_points):
     n_points = len(from_points)
     
     result = np.dot(from_points, to_points) / (n_points - 1)
+    # TODO: Do we divide by number of pairs?
+    result = np.dot(from_points, to_points)
     return result
 
 def _crr(r, rp, from_states, to_states):
@@ -140,7 +142,7 @@ def _crr2(r, rp, time_pairs):
     denominat = _corr_product(from_points_rp, from_points_rp)
     denominat = np.sqrt(denominat)
     result = numerator / denominat
-    return result    
+    return result
 
 def get_counts_from_traj_soft2(states, n_states=None, lag_time=1):
     """Try to get a soft count matrix according to Tavan 2005"""
