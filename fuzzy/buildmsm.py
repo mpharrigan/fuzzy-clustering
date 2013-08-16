@@ -4,97 +4,17 @@ import numpy as np
 import scipy.sparse
 
 eps = 1.0e-10
-
-def get_counts_from_traj(states, n_states=None, lag_time=1, sliding_window=True):
-    """Computes the transition count matrix for a sequence of states (single trajectory).
-
-    Parameters
-    ----------
-    states : array
-        A one-dimensional array of integers representing the sequence of states.
-        These integers must be in the range [0, n_states]
-    n_states : int
-        The total number of states. If not specified, the largest integer in the
-        states array plus one will be used.
-    lag_time : int, optional
-        The time delay over which transitions are counted
-    sliding_window : bool, optional
-        Use sliding window
-
-    Returns
-    -------
-    C : sparse matrix of integers
-        The computed transition count matrix
-    """
-
-    msm.check_assignment_array_input(states, ndim=1)
-
-    if not n_states:
-        n_states = np.max(states) + 1
-
-    if sliding_window:
-        from_states = states[:-lag_time: 1]
-        to_states = states[lag_time:: 1]
-    else:
-        from_states = states[:-lag_time: lag_time]
-        to_states = states[lag_time:: lag_time]
-    assert from_states.shape == to_states.shape
-    
-    # import pdb; pdb.set_trace()
-
-    transitions = np.row_stack((from_states, to_states))
-    counts = np.ones(transitions.shape[1], dtype=int)
-    try:
-        C = scipy.sparse.coo_matrix((counts, transitions),
-                                    shape=(n_states, n_states))
-    except ValueError:
-        # Lutz: if we arrive here, there was probably a state with index -1
-        # we try to fix it by ignoring transitions in and out of those states
-        # (we set both the count and the indices for those transitions to 0)
-        mask = transitions < 0
-        counts[mask[0, :] | mask[1, :]] = 0
-        transitions[mask] = 0
-        C = scipy.sparse.coo_matrix((counts, transitions),
-                                    shape=(n_states, n_states))
-
-    return C
-
-
-def outernorm(v1, v2, which='columns'):
-    mat = np.outer(v1, v2)
-    
-    if which == 'columns':
-        axis = 0
-    elif which == 'rows':
-        axis = 1
-    else:
-        raise ValueError()
-    
-    sums = np.sum(mat, axis=axis)
-    for i in xrange(mat.shape[axis]):
-        if sums[i] > eps:
-            if which == 'columns':
-                mat[:, i] = mat[:, i] / sums[i]
-            elif which == 'rows':
-                mat[i] = mat[i] / sums[i]
-                
-    return mat
     
 
 def get_counts_from_traj_soft1(states, n_states=None, lag_time=1):
-
-    # check_assignment_array_input(states, ndim=1)
-
     if not n_states:
         n_states = np.max(states) + 1
 
-#     if sliding_window:
+
     from_states = states[:-lag_time: 1]
     to_states = states[lag_time:: 1]
 
-#     else:
-#         from_states = states[: -lag_time: lag_time]
-#         to_states = states[lag_time:: lag_time]
+
     assert len(from_states) == len(to_states)
     
     soft_counts = np.zeros((n_states, n_states))
@@ -144,8 +64,12 @@ def _crr2(r, rp, time_pairs):
     result = numerator / denominat
     return result
 
-def get_counts_from_traj_soft2(states, n_states=None, lag_time=1):
-    """Try to get a soft count matrix according to Tavan 2005"""
+def get_counts_from_traj_soft(states, n_states=None, lag_time=1):
+    """Try to get a soft count matrix according to Tavan 2005.
+    
+    states is a chronological list of states from which this function
+    will calculate time pairs.
+    """
     if not n_states:
         n_states = np.max(states) + 1
 
@@ -163,6 +87,12 @@ def get_counts_from_traj_soft2(states, n_states=None, lag_time=1):
     return C      
 
 def get_counts_from_pairs(time_pairs, n_states):
+    """Get a soft count matrix by using the (potentially column normalized)
+    outer product.
+    
+    time_pairs is a (n_points, 2, n_states) shaped matrix containing pairs
+    of membership vectors.
+    """
     soft_counts = np.zeros((n_states, n_states))
     n_pairs = len(time_pairs)
     
@@ -173,8 +103,10 @@ def get_counts_from_pairs(time_pairs, n_states):
         
     C = scipy.sparse.coo_matrix(soft_counts)
     return C
-# TODO: Why does this work better without column normalization? Unclear.
-# Figure it out!
+
+
+    # TODO: Why does this work better without column normalization? Unclear.
+    # Figure it out!
         
     # Now, normalize columnwise based on 'from' values
     columnsum = np.sum(time_pairs[:, 0, :], axis=0)
@@ -185,6 +117,7 @@ def get_counts_from_pairs(time_pairs, n_states):
     return C
 
 def build_from_memberships(memberships, lag_time=1):
+    """Build an MSM from a time array of membership vectors."""
     from_states = memberships[:-lag_time: lag_time]
     to_states = memberships[lag_time:: lag_time]
     
@@ -203,6 +136,12 @@ def build_from_memberships(memberships, lag_time=1):
     return rev_counts, t_matrix, populations, mapping
 
 def build_classic_from_memberships(memberships, lag_time=1):
+    """Build a classic msm by turning a membership array into a state list.
+    
+    This function uses msmbuilder code to calculate the count matrix. Use this
+    for compairing quantized versions of the fuzzy count matrix building
+    for consistency.
+    """
     states = np.zeros(memberships.shape[0], dtype='int')
     n_states = memberships.shape[1]
     
@@ -216,5 +155,3 @@ def build_classic_from_memberships(memberships, lag_time=1):
     return rev_counts, t_matrix, populations, mapping
             
     
-def get_counts_from_traj_soft(states, n_states=None, lag_time=1):
-    return get_counts_from_traj_soft2(states, n_states, lag_time)
