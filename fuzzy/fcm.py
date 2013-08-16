@@ -352,7 +352,7 @@ def build_old(centroids, fuzziness, dist, neigen=4, show=False):
     
 
 def fcm(cluster_points, trajs, fuzziness=2.0, dist=euclidean_distance, max_iter=50,
-        eps=0.01, k=4, dim=2, show=False):
+        fuzzy_eps=0.01, k=4, dim=2, show=False):
     """Do fuzzy clustering."""
     centroids = guess_centroids(k, dim=dim, smart_guess=True)
     memberships = calculate_memberships(cluster_points, centroids, fuzziness, dist)
@@ -361,7 +361,7 @@ def fcm(cluster_points, trajs, fuzziness=2.0, dist=euclidean_distance, max_iter=
         centroids = calculate_centroids(k, dim, cluster_points, memberships, fuzziness)
         new_memberships = calculate_memberships(cluster_points, centroids, fuzziness, dist)
         
-        if convergence(memberships, new_memberships, eps):
+        if convergence(memberships, new_memberships, fuzzy_eps):
             print("Convergence achieved after %d steps" % i)
             break
         

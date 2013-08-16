@@ -1,11 +1,10 @@
-import numpy as np
-from sklearn import mixture
-import get_data
-import fcm
 from matplotlib import pyplot as pp
-import mullerforce
+from sklearn import mixture
 import buildmsm
-from msmbuilder import MSMLib as msml
+import fcm
+import get_data
+import mullerforce
+import numpy as np
 
 def plot_distribution(mixture_model, n_contours=80):
     """Plot the mixture distribution."""
