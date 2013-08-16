@@ -36,7 +36,7 @@ class MullerForce:
     @classmethod
     def potential(cls, x, y):
         "Compute the potential at a given point x,y"
-        value = 0
+        value = np.zeros_like(x)
         for j in range(4):
             value += cls.AA[j] * np.exp(cls.aa[j] * (x - cls.XX[j]) ** 2 + \
                 cls.bb[j] * (x - cls.XX[j]) * (y - cls.YY[j]) + cls.cc[j] * (y - cls.YY[j]) ** 2)

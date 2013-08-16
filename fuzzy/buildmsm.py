@@ -2,8 +2,6 @@ from __future__ import division
 from msmbuilder import MSMLib as msm
 import numpy as np
 import scipy.sparse
-
-eps = 1.0e-10
     
 
 def get_counts_from_traj_soft1(states, n_states=None, lag_time=1):
@@ -21,8 +19,8 @@ def get_counts_from_traj_soft1(states, n_states=None, lag_time=1):
     for i in xrange(len(from_states)):
         soft_counts += np.outer(from_states[i], to_states[i])
 
-    C = scipy.sparse.coo_matrix(soft_counts)
-    return C
+    sparse_counts = scipy.sparse.coo_matrix(soft_counts)
+    return sparse_counts
 
 def _corr_product(from_points, to_points):
     """Perform the correlation product (which is just a normalized dot product
@@ -64,7 +62,7 @@ def _crr2(r, rp, time_pairs):
     result = numerator / denominat
     return result
 
-def get_counts_from_traj_soft(states, n_states=None, lag_time=1):
+def get_counts_from_traj_soft2(states, n_states=None, lag_time=1):
     """Try to get a soft count matrix according to Tavan 2005.
     
     states is a chronological list of states from which this function
@@ -83,8 +81,8 @@ def get_counts_from_traj_soft(states, n_states=None, lag_time=1):
             soft_counts[i, j] = _crr(i, j, from_states, to_states)
         
 #     import pdb; pdb.set_trace()
-    C = scipy.sparse.coo_matrix(soft_counts)
-    return C      
+    sparse_counts = scipy.sparse.coo_matrix(soft_counts)
+    return sparse_counts 
 
 def get_counts_from_pairs(time_pairs, n_states):
     """Get a soft count matrix by using the (potentially column normalized)
@@ -101,8 +99,8 @@ def get_counts_from_pairs(time_pairs, n_states):
         # vectors and add it to the building count matrix
         soft_counts += np.outer(time_pairs[pair_i, 0, :], time_pairs[pair_i, 1, :])
         
-    C = scipy.sparse.coo_matrix(soft_counts)
-    return C
+    sparse_counts = scipy.sparse.coo_matrix(soft_counts)
+    return sparse_counts
 
 
     # TODO: Why does this work better without column normalization? Unclear.
@@ -113,8 +111,8 @@ def get_counts_from_pairs(time_pairs, n_states):
     soft_counts = soft_counts / columnsum 
     soft_counts = soft_counts / n_pairs   
     
-    C = scipy.sparse.coo_matrix(soft_counts)
-    return C
+    sparse_counts = scipy.sparse.coo_matrix(soft_counts)
+    return sparse_counts
 
 def build_from_memberships(memberships, lag_time=1):
     """Build an MSM from a time array of membership vectors."""

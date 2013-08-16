@@ -2,7 +2,7 @@ from __future__ import division
 
 import numpy as np
 
-eps = 1.0e-10
+EPSILON = 1.0e-10
 
 def outer(v1, v2):
     return np.outer(v1, v2)
@@ -23,7 +23,7 @@ def outernorm(v1, v2, which='rows'):
     
     sums = np.sum(mat, axis=axis)
     for i in xrange(mat.shape[axis]):
-        if sums[i] > eps:
+        if sums[i] > EPSILON:
             if which == 'columns':
                 mat[:, i] = mat[:, i] / sums[i]
             elif which == 'rows':
