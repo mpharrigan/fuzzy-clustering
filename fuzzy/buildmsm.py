@@ -171,6 +171,11 @@ def get_counts_from_pairs(time_pairs, n_states):
         # vectors and add it to the building count matrix
         soft_counts += np.outer(time_pairs[pair_i, 0, :], time_pairs[pair_i, 1, :])
         
+    C = scipy.sparse.coo_matrix(soft_counts)
+    return C
+# TODO: Why does this work better without column normalization? Unclear.
+# Figure it out!
+        
     # Now, normalize columnwise based on 'from' values
     columnsum = np.sum(time_pairs[:, 0, :], axis=0)
     soft_counts = soft_counts / columnsum 
@@ -195,6 +200,19 @@ def build_from_memberships(memberships, lag_time=1):
     
     counts = get_counts_from_pairs(pairs, n_clusters) 
     rev_counts, t_matrix, populations, mapping = msm.build_msm(counts)
+    return rev_counts, t_matrix, populations, mapping
+
+def build_classic_from_memberships(memberships, lag_time=1):
+    states = np.zeros(memberships.shape[0], dtype='int')
+    n_states = memberships.shape[1]
+    
+    for i in xrange(memberships.shape[0]):
+        memb = memberships[i]
+        state = np.argmax(memb)
+        states[i] = state
+        
+    counts = msm.get_counts_from_traj(states, n_states, lag_time)
+    rev_counts, t_matrix, populations, mapping = msm.build_msm(counts)  
     return rev_counts, t_matrix, populations, mapping
             
     
