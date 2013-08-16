@@ -6,6 +6,14 @@ import numpy as np
 
 
 def get_trajs(directory="../test_trajs/", dim=2, retrieve='justpoints'):
+    """Get a list of trajectories.
+    
+    Use retrieve to determine type:
+     - 'justpoints': x and y coordinates of the first particle in a numpy
+                     array, list of
+     - 'mdtrajs':    mdtraj objects, list of
+     - 'shimtrajs':  trajectories suitable for use with msmbuilder2
+     """
     files = os.listdir(directory)
     trajlist = list()
     for f in files:
@@ -30,6 +38,7 @@ def get_trajs(directory="../test_trajs/", dim=2, retrieve='justpoints'):
 
 
 def get_points(stride, directory="../test_trajs/", dim=2):
+    """Returns a numpy array of xy points."""
     files = os.listdir(directory)
     points = np.zeros((0, dim))
     for f in files:

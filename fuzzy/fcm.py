@@ -22,24 +22,13 @@ def _membership_frac(point_j, centroid_i, fuzziness, dist):
     value = fraction ** exponent
     return value        
 
-def calculate_membership(i, j, points, centroids, fuzziness, dist, debug):
+def calculate_membership(centroid_i, point_i, points, centroids, fuzziness, dist, debug):
     """Calculate the membership u_ij given data points and centroids."""
     
-    n_clusters = len(centroids)    
-    numerator = _membership_frac(points[j], centroids[i], fuzziness, dist)
+    numerator = _membership_frac(points[point_i], centroids[centroid_i], fuzziness, dist)
     
     if numerator < 0:
         return 1.0
-    
-#     denomonat = 0.0
-#     for k in xrange(n_clusters):
-#         denomonat += _membership_frac(points[j], centroids[k], fuzziness, dist)
-#         
-#     result = numerator / denomonat
-#     
-#     if debug:
-#         print("Membership (%d,%d) is %f" % (i, j, result))
-    # TODO: Cleanup ^^
     
     return numerator
 
@@ -50,16 +39,14 @@ def calculate_memberships(points, centroids, fuzziness, dist, debug=False):
     
     memberships = np.zeros((n_points, n_clusters))
     
-    for j in xrange(n_points):
-        for i in xrange(n_clusters):
-            memberships[j, i] = calculate_membership(i, j, points, centroids,
+    for point_i in xrange(n_points):
+        for centroid_i in xrange(n_clusters):
+            memberships[point_i, centroid_i] = calculate_membership(centroid_i, point_i, points, centroids,
                                                      fuzziness, dist, debug)
         # Normalize
-        memb_denom = np.sum(memberships, axis=1)[j]
-        memberships[j, :] = memberships[j, :] / memb_denom
-            
-            
-            
+        memb_denom = np.sum(memberships, axis=1)[point_i]
+        memberships[point_i, :] = memberships[point_i, :] / memb_denom
+
     return memberships
             
 def calculate_centroid(i, points, memberships, fuzziness):
@@ -178,13 +165,14 @@ def plot_centroids(centroids, marker_sizes=None):
     If marker_sizes is given, it will use this array as the sizes for the
     various centroids. This is useful for visualizing eigenvectors.
     """
+    
     if marker_sizes is None:
         pp.clf()
         mullerforce.MullerForce.plot()
         pp.plot(centroids[:, 0], centroids[:, 1], 'yo', markersize=12,
                 zorder=10)
         pp.title("Centroids")
-    else:
+    else:        
         assert len(centroids) == len(marker_sizes)
         for i in xrange(len(centroids)):
             marker_size = marker_sizes[i]
@@ -322,8 +310,10 @@ def analyze_msm(t_matrix, centroids, desc, neigen=4, show=False):
     
     if show: plot_eigens(centroids, vec, val, desc)  
 
-def build_new(centroids, trajs, fuzziness, dist, soft=True, neigen=4, show=False):
-    """Build an MSM from membership vectors.
+def build_new(centroids, trajs, fuzziness, dist, soft=True, neigen=4, show=False, desc=None):
+    """Build an MSM from points and centroids.
+    
+    First this function generates membership vectors.
     
     if soft is False, 'Quantize' the membership vectors to mirror the
     hard clustering case, else use the fuzzy nature of the clusters in 
@@ -336,10 +326,11 @@ def build_new(centroids, trajs, fuzziness, dist, soft=True, neigen=4, show=False
     print("Got count matrix")
     rev_counts, t_matrix, populations, mapping = msml.build_msm(counts_mat)
     
-    if soft:
-        desc = 'New, Fuzzy'
-    else:
-        desc = 'New, not-so-fuzzy'
+    if desc is None:
+        if soft:
+            desc = 'New, Fuzzy'
+        else:
+            desc = 'New, not-so-fuzzy'
     analyze_msm(t_matrix, centroids, desc=desc, show=show)
     
 
@@ -383,20 +374,30 @@ def fcm(cluster_points, trajs, fuzziness=2.0, dist=euclidean_distance, max_iter=
     
     build_new(centroids, trajs, fuzziness, dist, soft=True, show=show)
     
-def fcm_using_classic_clusters(cluster_points, trajs_old, trajs_new,
-                               n_clusters, n_medoid_iters, metric, dim=2, fuzziness=2.0, dist=euclidean_distance, show=False):
+def fcm_using_classic_clusters(trajs_old, trajs_new, n_clusters,
+                               n_medoid_iters, metric, dim=2, fuzziness=2.0,
+                               dist=euclidean_distance, soft=True, show=False,
+                               desc=None):
+    """Do fuzzy clustering, but with hybrid k medoids as cluster centers."""
+    
     hkm = clustering.HybridKMedoids(metric, trajs_old, k=n_clusters, local_num_iters=n_medoid_iters)
     centroids_msmb = hkm.get_generators_as_traj()
     centroids = centroids_msmb['XYZList'][:, 0, 0:dim]
     
-    plot_centroids(centroids)
-    if show: pp.show()
+    if desc is None:
+        if soft:
+            desc = "Fuzzy using classic clusters, k = %d" % n_clusters
+        else:
+            desc = "Classic clusters, quantied membership, k = %d" % n_clusters
     
-    print("Building msm...")
-    build_new(centroids, trajs_new, fuzziness, dist, soft=True, show=show)
+    build_new(centroids, trajs_new, fuzziness, dist, soft=soft, show=show, desc=desc)
     
-def classic(trajs, n_clusters, n_medoid_iters, metric, dim=2, lag_time=1, show=False):
+def classic(trajs, n_clusters, n_medoid_iters, metric, dim=2, lag_time=1, show=False, desc=None):
     """Use classic clustering methods."""
+    
+    if desc is None:
+        desc = "Classic, n_clusters=%d" % n_clusters
+    
     hkm = clustering.HybridKMedoids(metric, trajs, k=n_clusters, local_num_iters=n_medoid_iters)
     centroids = hkm.get_generators_as_traj()
     
@@ -406,7 +407,7 @@ def classic(trajs, n_clusters, n_medoid_iters, metric, dim=2, lag_time=1, show=F
     
     counts = msml.get_count_matrix_from_assignments(hkm.get_assignments(), n_clusters, lag_time)
     rev_counts, t_matrix, populations, mapping = msml.build_msm(counts)
-    analyze_msm(t_matrix, centroids_nf, 'Classic, n_clusters=%d' % n_clusters, show=show)
+    analyze_msm(t_matrix, centroids_nf, desc, show=show)
 
 def demonstrate(show, big_k=200, small_k=3, num_med_iters=1, lag_time=10):
     """Run through various schemes for comparison."""
@@ -422,12 +423,23 @@ def demonstrate(show, big_k=200, small_k=3, num_med_iters=1, lag_time=10):
     # Build msm using classic methods with a small number of clusters
     classic(trajs_old, n_clusters=small_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=False)
     
-    # Build msm using new fuzzy clusters
+    # Get data for new, fuzzy clusters
     points_sample = get_data.get_points(stride=10)
     trajs_new = get_data.get_trajs(retrieve='justpoints')
+    
+    # Do new, small k, fuzzy clusters
     fcm(points_sample, trajs_new, k=small_k, show=False)
     
-    fcm_using_classic_clusters(points_sample, trajs_old=trajs_old, trajs_new=trajs_new, n_clusters=big_k, n_medoid_iters=num_med_iters, metric=metric, show=True)
+    # Do quantized fuzzy clustering with big k
+    fcm_using_classic_clusters(trajs_old=trajs_old, trajs_new=trajs_new,
+                               n_clusters=big_k, n_medoid_iters=num_med_iters,
+                               metric=metric, show=True, soft=False)
+    
+    # Do fuzzy clustering with big k
+    fcm_using_classic_clusters(trajs_old=trajs_old,
+                               trajs_new=trajs_new, n_clusters=big_k,
+                               n_medoid_iters=num_med_iters, metric=metric,
+                               show=True)
 
 if __name__ == "__main__":
     demonstrate(show=True)

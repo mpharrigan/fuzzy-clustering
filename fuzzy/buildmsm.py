@@ -164,13 +164,38 @@ def get_counts_from_traj_soft2(states, n_states=None, lag_time=1):
 
 def get_counts_from_pairs(time_pairs, n_states):
     soft_counts = np.zeros((n_states, n_states))
-    for i in xrange(n_states):
-        for j in xrange(n_states):
-            soft_counts[i, j] = _crr2(i, j, time_pairs)
+    n_pairs = len(time_pairs)
+    
+    for pair_i in xrange(n_pairs):
+        # For each pair, do the outer product between from and to membership
+        # vectors and add it to the building count matrix
+        soft_counts += np.outer(time_pairs[pair_i, 0, :], time_pairs[pair_i, 1, :])
         
-#     import pdb; pdb.set_trace()
+    # Now, normalize columnwise based on 'from' values
+    columnsum = np.sum(time_pairs[:, 0, :], axis=0)
+    soft_counts = soft_counts / columnsum 
+    soft_counts = soft_counts / n_pairs   
+    
     C = scipy.sparse.coo_matrix(soft_counts)
-    return C   
+    return C
+
+def build_from_memberships(memberships, lag_time=1):
+    from_states = memberships[:-lag_time: lag_time]
+    to_states = memberships[lag_time:: lag_time]
+    
+    assert len(from_states) == len(to_states)        
+    
+    n_pairs = len(from_states)
+    n_times = 2
+    n_clusters = memberships.shape[1]
+
+    pairs = np.zeros((n_pairs, n_times, n_clusters))
+    pairs[:, 0, :] = from_states
+    pairs[:, 1, :] = to_states 
+    
+    counts = get_counts_from_pairs(pairs, n_clusters) 
+    rev_counts, t_matrix, populations, mapping = msm.build_msm(counts)
+    return rev_counts, t_matrix, populations, mapping
             
     
 def get_counts_from_traj_soft(states, n_states=None, lag_time=1):
