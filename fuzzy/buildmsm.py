@@ -29,8 +29,6 @@ def _corr_product(from_points, to_points):
     assert len(from_points) == len(to_points), 'number of points must match'
     n_points = len(from_points)
     
-    result = np.dot(from_points, to_points) / (n_points - 1)
-    # TODO: Do we divide by number of pairs?
     result = np.dot(from_points, to_points)
     return result
 
@@ -99,18 +97,6 @@ def get_counts_from_pairs(time_pairs, n_states):
         # vectors and add it to the building count matrix
         soft_counts += np.outer(time_pairs[pair_i, 0, :], time_pairs[pair_i, 1, :])
         
-    sparse_counts = scipy.sparse.coo_matrix(soft_counts)
-    return sparse_counts
-
-
-    # TODO: Why does this work better without column normalization? Unclear.
-    # Figure it out!
-        
-    # Now, normalize columnwise based on 'from' values
-    columnsum = np.sum(time_pairs[:, 0, :], axis=0)
-    soft_counts = soft_counts / columnsum 
-    soft_counts = soft_counts / n_pairs   
-    
     sparse_counts = scipy.sparse.coo_matrix(soft_counts)
     return sparse_counts
 
