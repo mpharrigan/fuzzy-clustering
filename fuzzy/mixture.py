@@ -1,9 +1,6 @@
+from fuzzy import buildmsm, fcm, get_data, mullerforce
 from matplotlib import pyplot as pp
 from sklearn import mixture
-import buildmsm
-import fcm
-import get_data
-import mullerforce
 import numpy as np
 
 def plot_distribution(mixture_model, n_contours=80):
@@ -66,7 +63,7 @@ def get_mixture_model(points, min_k, max_k, fix_k=None):
 
 
 def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4):
-    points = get_data.get_points(stride=10)
+    points = get_data.get_points(stride=1)
     
     min_mm = get_mixture_model(points, min_k, max_k, fix_k)
     
@@ -78,20 +75,26 @@ def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4):
     # Get the memberships
     memberships = min_mm.predict_proba(points)
     
-    # Pick highest membership, put it in a classic state transition list, and use
-    # straight msmbuilder code to build the count matrix
-    rev_counts, t_matrix, populations, mapping = buildmsm.build_classic_from_memberships(memberships)
-    fcm.analyze_msm(t_matrix, centroids, desc='Old, Hard', neigen=n_eigen, show=True)
+    # Pick highest membership, put it in a classic state transition list,
+    # and use straight msmbuilder code to build the count matrix
+    rev_counts, t_matrix, populations, mapping = \
+                    buildmsm.build_classic_from_memberships(memberships)
+    fcm.analyze_msm(t_matrix, centroids, desc='Old, Hard',
+                    neigen=n_eigen, show=True)
     
     # Quantize the membership vectors and use the new method of building the
     # count matrix and test with above
     q_memberships = quantize_memberships(memberships)
-    rev_counts, t_matrix, populations, mapping = buildmsm.build_from_memberships(q_memberships)
-    fcm.analyze_msm(t_matrix, centroids, "New, Hard", neigen=n_eigen, show=True)
+    rev_counts, t_matrix, populations, mapping = \
+                    buildmsm.build_from_memberships(q_memberships)
+    fcm.analyze_msm(t_matrix, centroids, "New, Hard",
+                    neigen=n_eigen, show=False)
     
     # Do mixture model msm building
-    rev_counts, t_matrix, populations, mapping = buildmsm.build_from_memberships(memberships)
-    fcm.analyze_msm(t_matrix, centroids, "Mixture Model", neigen=n_eigen, show=True)
+    rev_counts, t_matrix, populations, mapping = \
+                    buildmsm.build_from_memberships(memberships)
+    fcm.analyze_msm(t_matrix, centroids, "Mixture Model",
+                    neigen=n_eigen, show=True)
     
 if __name__ == "__main__":
     test_mixture()

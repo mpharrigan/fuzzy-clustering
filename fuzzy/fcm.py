@@ -1,20 +1,16 @@
+from fuzzy import buildmsm, euclidean, get_data, mullerforce
 from matplotlib import pyplot as pp
 from msmbuilder import MSMLib as msml, msm_analysis as msma, clustering
-import buildmsm as buildmsm
-import euclidean as euclidean
-import get_data as get_data
-import mullerforce as mullerforce
 import numpy as np
 import random
-import scipy.sparse
 
-eps = 1e-10
+EPSILON = 1e-10
     
 def _membership_frac(point_j, centroid_i, fuzziness, dist):
     """A term in computing membership."""
     
     d2 = dist(point_j, centroid_i)
-    if d2 < eps:
+    if d2 < EPSILON:
         return -1
     
     fraction = 1.0 / dist(point_j, centroid_i)
@@ -22,7 +18,7 @@ def _membership_frac(point_j, centroid_i, fuzziness, dist):
     value = fraction ** exponent
     return value        
 
-def calculate_membership(centroid_i, point_i, points, centroids, fuzziness, dist, debug):
+def calculate_membership(centroid_i, point_i, points, centroids, fuzziness, dist):
     """Calculate the membership u_ij given data points and centroids."""
     
     numerator = _membership_frac(points[point_i], centroids[centroid_i], fuzziness, dist)
@@ -32,7 +28,7 @@ def calculate_membership(centroid_i, point_i, points, centroids, fuzziness, dist
     
     return numerator
 
-def calculate_memberships(points, centroids, fuzziness, dist, debug=False):
+def calculate_memberships(points, centroids, fuzziness, dist):
     """Calculate memberships of points relative to centroids."""
     n_points = len(points)
     n_clusters = len(centroids)
@@ -42,7 +38,7 @@ def calculate_memberships(points, centroids, fuzziness, dist, debug=False):
     for point_i in xrange(n_points):
         for centroid_i in xrange(n_clusters):
             memberships[point_i, centroid_i] = calculate_membership(centroid_i, point_i, points, centroids,
-                                                     fuzziness, dist, debug)
+                                                     fuzziness, dist)
         # Normalize
         memb_denom = np.sum(memberships, axis=1)[point_i]
         memberships[point_i, :] = memberships[point_i, :] / memb_denom
@@ -331,24 +327,7 @@ def build_new(centroids, trajs, fuzziness, dist, soft=True, neigen=4, show=False
             desc = 'New, Fuzzy'
         else:
             desc = 'New, not-so-fuzzy'
-    analyze_msm(t_matrix, centroids, desc=desc, show=show)
-    
-
-def build_old(centroids, fuzziness, dist, neigen=4, show=False):
-    """Build an MSM the old fashioned way."""
-    # TODO: Change input to do trajs
-    n_states = len(centroids)
-    trajs = get_data.get_trajs()
-    counts_classic = scipy.sparse.lil_matrix((int(n_states), int(n_states)),
-                                             dtype='float32')
-    
-    for traj in trajs:
-        sl_classic, _ = get_hard_state_list(centroids, traj, fuzziness, dist)
-        counts_classic = counts_classic + \
-                msml.get_counts_from_traj(sl_classic, n_states)        
-
-    rev_counts, t_matrix, populations, mapping = msml.build_msm(counts_classic)  
-    analyze_msm(t_matrix, centroids, desc='Old, Hard', show=show)
+    analyze_msm(t_matrix, centroids, desc=desc, show=show, neigen=neigen)
     
 
 def fcm(cluster_points, trajs, fuzziness=2.0, dist=euclidean_distance, max_iter=50,
@@ -409,7 +388,7 @@ def classic(trajs, n_clusters, n_medoid_iters, metric, dim=2, lag_time=1, show=F
     rev_counts, t_matrix, populations, mapping = msml.build_msm(counts)
     analyze_msm(t_matrix, centroids_nf, desc, show=show)
 
-def demonstrate(show, big_k=200, small_k=3, num_med_iters=1, lag_time=10):
+def demonstrate(big_k=200, small_k=3, num_med_iters=1, lag_time=10):
     """Run through various schemes for comparison."""
     clustering.logger.setLevel('ERROR')
 
@@ -442,5 +421,5 @@ def demonstrate(show, big_k=200, small_k=3, num_med_iters=1, lag_time=10):
                                show=True)
 
 if __name__ == "__main__":
-    demonstrate(show=True)
+    demonstrate()
     
