@@ -63,7 +63,7 @@ def get_mixture_model(points, min_k, max_k, fix_k=None):
 
 
 def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4):
-    points = get_data.get_points(stride=1)
+    points = get_data.get_points(stride=3)
     
     min_mm = get_mixture_model(points, min_k, max_k, fix_k)
     
@@ -80,7 +80,7 @@ def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4):
     rev_counts, t_matrix, populations, mapping = \
                     buildmsm.build_classic_from_memberships(memberships)
     fcm.analyze_msm(t_matrix, centroids, desc='Old, Hard',
-                    neigen=n_eigen, show=True)
+                    neigen=n_eigen, show=False)
     
     # Quantize the membership vectors and use the new method of building the
     # count matrix and test with above
@@ -94,7 +94,18 @@ def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4):
     rev_counts, t_matrix, populations, mapping = \
                     buildmsm.build_from_memberships(memberships)
     fcm.analyze_msm(t_matrix, centroids, "Mixture Model",
-                    neigen=n_eigen, show=True)
+                    neigen=n_eigen, show=False)
+    
+    
+    return
+    
+    high_state_mm = get_mixture_model(points, min_k, max_k, fix_k=200)
+    high_state_memberships = high_state_mm.predict_proba(points)
+    high_state_centroids = high_state_mm.means_
+    rev_counts, t_matrix, populations, mapping = \
+                    buildmsm.build_from_memberships(high_state_memberships)
+    fcm.analyze_msm(t_matrix, high_state_centroids, "High state Mixture Model",
+                    neigen=n_eigen, show=False)    
     
 if __name__ == "__main__":
     test_mixture()
