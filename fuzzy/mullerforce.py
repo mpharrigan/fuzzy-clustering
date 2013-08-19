@@ -26,20 +26,24 @@ class MullerForce:
         expression = '1000.0 * z^2'
         for j in range(4):
             # add the muller terms for the X and Y
-            fmt = dict(aa=self.aa[j], bb=self.bb[j], cc=self.cc[j], AA=self.AA[j], XX=self.XX[j], YY=self.YY[j])
-            expression += '''+ {AA}*exp({aa} *(x - {XX})^2 + {bb} * (x - {XX})
-                               * (y - {YY}) + {cc} * (y - {YY})^2)'''.format(**fmt)
+            fmt = dict(aa=self.aa[j], bb=self.bb[j], cc=self.cc[j],
+                       AA=self.AA[j], XX=self.XX[j], YY=self.YY[j])
+            expression += '''+ {AA}*exp({aa} *(x - {XX})^2 +
+                                {bb} * (x - {XX}) * (y - {YY}) + 
+                                {cc} * (y - {YY})^2)'''.format(**fmt)
 
         # Include scaling expression
-        expression = "{strength}*(".format(strength=self.strength) + expression + ")"
+        expression = ("{strength}*(".format(strength=self.strength) + 
+                                    expression + ")")
 
     @classmethod
     def potential(cls, x, y):
         "Compute the potential at a given point x,y"
-        value = 0
+        value = np.zeros_like(x)
         for j in range(4):
             value += cls.AA[j] * np.exp(cls.aa[j] * (x - cls.XX[j]) ** 2 + \
-                cls.bb[j] * (x - cls.XX[j]) * (y - cls.YY[j]) + cls.cc[j] * (y - cls.YY[j]) ** 2)
+                cls.bb[j] * (x - cls.XX[j]) * (y - cls.YY[j]) + \
+                cls.cc[j] * (y - cls.YY[j]) ** 2)
         return value
 
     @classmethod
@@ -48,15 +52,20 @@ class MullerForce:
         grid_width = max(maxx - minx, maxy - miny) / 200.0
         ax = kwargs.pop('ax', None)
         xx, yy = np.mgrid[minx : maxx : grid_width, miny : maxy : grid_width]
-        V = cls.potential(xx, yy)
+        potential = cls.potential(xx, yy)
         # clip off any values greater than 200, since they mess up
         # the color scheme
         if ax is None:
             ax = pp
-        ax.contourf(xx, yy, V.clip(max=200), 40, **kwargs)
+        ax.contourf(xx, yy, potential.clip(max=200), 40, **kwargs)
         return minx, maxx, miny, maxy
     
 def get_default_bounds():
+    """Get the bounds of the muller potential.
+    
+    This can be useful for setting plot limits after additional data has been
+    plotted, or these bounds can be used for generating test data.
+    """
     return -1.5, 1.2, -0.2, 2
 
 

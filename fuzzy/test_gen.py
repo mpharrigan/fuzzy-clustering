@@ -1,17 +1,29 @@
-from __future__ import division
+"""Testing various schemes for building a count matrix.
 
+A count matrix is traditionally built from a series of state indices. With
+fuzzy clustering, however, we must build an equivalent matrix from 'membership
+vectors'. This module tests various ways of doing this.
+"""
+
+from __future__ import division
 import numpy as np
 
-eps = 1.0e-10
+EPSILON = 1.0e-10
 
 def outer(v1, v2):
+    """The outer product."""
     return np.outer(v1, v2)
 
 def putter(v1, v2):
+    """The vectors stacked."""
     return np.array([v1, v2]).transpose()
 
 def outernorm(v1, v2, which='rows'):
-#     import pdb; pdb.set_trace()
+    """The outer product followed by a normalization.
+    
+    which controls the axis of normalization and
+    can be 'rows' or 'columns'.
+    """
     mat = np.outer(v1, v2)
     
     if which == 'columns':
@@ -23,7 +35,7 @@ def outernorm(v1, v2, which='rows'):
     
     sums = np.sum(mat, axis=axis)
     for i in xrange(mat.shape[axis]):
-        if sums[i] > eps:
+        if sums[i] > EPSILON:
             if which == 'columns':
                 mat[:, i] = mat[:, i] / sums[i]
             elif which == 'rows':
@@ -33,7 +45,7 @@ def outernorm(v1, v2, which='rows'):
 
 
 
-test = [
+TEST_CONDITIONS = [
         [[1, 0], [1, 0]],
         [[1, 0], [0, 1]],
         [[0.5, 0.5], [0.5, 0.5]],
@@ -41,7 +53,8 @@ test = [
         ]
 
 def main(func=outernorm):
-    for case in test:
+    """Test schemes."""
+    for case in TEST_CONDITIONS:
         print("\nCase:")
         v1 = np.array(case[0], dtype='float32')
         v2 = np.array(case[1], dtype='float32')
