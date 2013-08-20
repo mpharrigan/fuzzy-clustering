@@ -419,6 +419,19 @@ def demonstrate(big_k=200, small_k=3, num_med_iters=1, lag_time=10):
                                trajs_new=trajs_new, n_clusters=big_k,
                                n_medoid_iters=num_med_iters, metric=metric,
                                show=True)
+    
+def demonstrate_classic(big_k=200, num_med_iters=1, lag_time=10, show=False):
+    """Do very classic schemes and compare to mixture modelling."""
+    clustering.logger.setLevel('ERROR')
+
+    # Load shimmed trajectories and a metric for interfacing with msmbuilder
+    trajs_old = get_data.get_trajs(retrieve='shimtrajs')
+    metric = euclidean.Euclidean2d()
+    
+    # Build msm in the classic regime (high number of clusters)
+    classic(trajs_old, n_clusters=big_k, n_medoid_iters=num_med_iters, metric=metric, lag_time=lag_time, show=show)
+    
+        
 
 if __name__ == "__main__":
     demonstrate()

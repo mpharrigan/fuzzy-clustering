@@ -2,6 +2,10 @@ from fuzzy import buildmsm, fcm, get_data, mullerforce
 from matplotlib import pyplot as pp
 from sklearn import mixture
 import numpy as np
+import ghmm
+import scipy.sparse.csr
+import ghmmwrapper
+import ghmmhelper
 
 def plot_distribution(mixture_model, n_contours=80):
     """Plot the mixture distribution."""
@@ -59,26 +63,76 @@ def get_mixture_model(points, min_k, max_k, fix_k=None):
         min_mm.fit(points)        
     
     print_ic(min_mm, points)
-    return min_mm    
+    return min_mm
 
+def get_hidden_markov_model(mixture_model, guess_t_matrix):
+    
+    # Emission  probabilities for HMM
+    emissions = [[mixture_model.means_[j], mixture_model.covars_[j].flatten()] for j in xrange(mixture_model.n_components)]
+    
+    # Initial transition matrix
+    if isinstance(guess_t_matrix, scipy.sparse.csr.csr_matrix):
+        guess_t_matrix = guess_t_matrix.todense()
+        guess_t_matrix = guess_t_matrix.tolist()
+        
+    # Initial occupancy
+    # Todo: figure out if initial occupancy matters
+    initial_occupancy = [1.0 / mixture_model.n_components] * mixture_model.n_components
+        
+    # Set up distribution
+    g_float = ghmm.Float()
+    g_distribution = ghmm.MultivariateGaussianDistribution(g_float)    
+    
+    
+    model = ghmm.HMMFromMatrices(g_float, g_distribution, guess_t_matrix, emissions, initial_occupancy)
+    return model
 
-def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4):
-    points = get_data.get_points(stride=3)
+def perform_optimization(hidden_mm, trajs, n_steps=1000):
     
-    min_mm = get_mixture_model(points, min_k, max_k, fix_k)
+    dim = trajs[0].shape[1]
     
-    centroids = min_mm.means_
+    # Domains for our multivariate gaussians
+    domain = hidden_mm.emissionDomain
+    
+    prepared_trajs = [t.flatten().tolist() for t in trajs]
+    (seq_c, lengths) = ghmmhelper.list2double_matrix(prepared_trajs)
+    lengths_c = ghmmwrapper.list2int_array(lengths)
+    cseq = ghmmwrapper.ghmm_cseq(seq_c, lengths_c, len(trajs))
+    
+#     # Make our own c-style sequence object and bypass python wrapping (sortof)
+#     points_flat = points.flatten()
+#     points_flat_c = ghmmwrapper.list2double_array(points_flat)
+#     cseq = ghmmwrapper.ghmm_cseq(points_flat_c, len(points_flat))
+#     cseq.dim = dim
+#     
+#     train_seq = ghmm.EmissionSequence(domain, cseq)
+     
+
+    train_seq = ghmm.SequenceSet(domain, cseq)
+    likelihood = hidden_mm.baumWelch(train_seq, nrSteps=n_steps)    
+    
+    new_t_matrix = hidden_mm.asMatrices()[0]
+    new_t_matrix = scipy.sparse.csr_matrix(new_t_matrix)
+    
+    return new_t_matrix 
+
+def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4, lag_time=10):
+    points = get_data.get_points(stride=1)
+    
+    mixture_model = get_mixture_model(points, min_k, max_k, fix_k)
+    
+    centroids = mixture_model.means_
     fcm.plot_centroids(centroids)
-    plot_distribution(min_mm)
-    pp.show()
+    plot_distribution(mixture_model)
+    # pp.show()
     
     # Get the memberships
-    memberships = min_mm.predict_proba(points)
+    memberships = mixture_model.predict_proba(points)
     
     # Pick highest membership, put it in a classic state transition list,
     # and use straight msmbuilder code to build the count matrix
     rev_counts, t_matrix, populations, mapping = \
-                    buildmsm.build_classic_from_memberships(memberships)
+                    buildmsm.build_classic_from_memberships(memberships, lag_time=10)
     fcm.analyze_msm(t_matrix, centroids, desc='Old, Hard',
                     neigen=n_eigen, show=False)
     
@@ -86,18 +140,25 @@ def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4):
     # count matrix and test with above
     q_memberships = quantize_memberships(memberships)
     rev_counts, t_matrix, populations, mapping = \
-                    buildmsm.build_from_memberships(q_memberships)
+                    buildmsm.build_from_memberships(q_memberships, lag_time=10)
     fcm.analyze_msm(t_matrix, centroids, "New, Hard",
                     neigen=n_eigen, show=False)
     
     # Do mixture model msm building
     rev_counts, t_matrix, populations, mapping = \
-                    buildmsm.build_from_memberships(memberships)
+                    buildmsm.build_from_memberships(memberships, lag_time=10)
     fcm.analyze_msm(t_matrix, centroids, "Mixture Model",
-                    neigen=n_eigen, show=False)
+                    neigen=n_eigen, show=True)
     
+    # Try to improve by using a HMM
+    hidden_mm = get_hidden_markov_model(mixture_model, t_matrix)
+    trajs = get_data.get_trajs()
+    new_t_matrix = perform_optimization(hidden_mm, trajs)
     
-    return
+    fcm.analyze_msm(new_t_matrix, centroids, "Baum Welch Mixture Model",
+                neigen=n_eigen, show=True)
+    
+    return points, mixture_model, memberships, t_matrix, hidden_mm
     
     high_state_mm = get_mixture_model(points, min_k, max_k, fix_k=200)
     high_state_memberships = high_state_mm.predict_proba(points)
