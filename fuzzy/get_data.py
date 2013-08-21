@@ -34,8 +34,20 @@ def get_trajs(directory="../test_trajs/", dim=2, retrieve='justpoints'):
             
     
     return trajlist
-        
 
+def get_points_from_trajlist(traj_list):
+    """Get a list of points from multiple trajectories.
+    
+    This can be used for clustering, mixture modeling, etc but is
+    inappropriate for e.g. training an HMM.
+    """
+    assert len(traj_list) > 0, 'Please supply at least one trajectory'
+    dim = traj_list[0].shape[1]
+    points = np.zeros((0, dim))
+    for traj in traj_list:
+        points = np.append(points, traj, axis=0)
+    return points
+        
 
 def get_points(stride, directory="../test_trajs/", dim=2):
     """Returns a numpy array of xy points."""
