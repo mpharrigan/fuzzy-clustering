@@ -7,7 +7,7 @@ import numpy as np
 
 def get_trajs(directory="../test_trajs/", dim=2, retrieve='justpoints'):
     """Get a list of trajectories.
-    
+
     Use retrieve to determine type:
      - 'justpoints': x and y coordinates of the first particle in a numpy
                      array, list of
@@ -19,25 +19,50 @@ def get_trajs(directory="../test_trajs/", dim=2, retrieve='justpoints'):
     for f in files:
         if f.endswith('.h5'):
             traj = mdtraj.load("%s/%s" % (directory, f))
-                        
+
             if retrieve == 'justpoints':
                 # Get x and y of the first particle
                 xy = traj.xyz[:, 0, 0:dim]
-                
-                # Add them to the list 
+
+                # Add them to the list
                 trajlist.append(xy)
             elif retrieve == 'mdtrajs':
                 trajlist.append(traj)
             elif retrieve == 'shimtrajs':
                 shimt = ShimTrajectory(traj.xyz)
                 trajlist.append(shimt)
-            
-    
+
+
     return trajlist
+
+def get_shimtraj_from_trajlist(traj_list):
+    """Get a shimmed trajectory from a list of points.
+
+    Used for using classic clustering from a constructed model."""
+    assert len(traj_list) > 0, 'Must have at least one trajectory'
+
+    shim_tl = list()
+
+    # See if we need to pad a third coordinate
+    temp_traj = traj_list[0]
+    dimdiff = 0
+    if temp_traj.shape[1] < 3:
+            dimdiff = 3 - temp_traj.shape[1]
+
+    for traj in traj_list:
+        if dimdiff > 0:
+            padding = np.zeros((traj.shape[0], dimdiff))
+            traj = np.append(traj, padding, axis=1)
+        traj = np.reshape(traj, (traj.shape[0], 1, 3))
+        shim_t = ShimTrajectory(traj)
+        shim_tl.append(shim_t)
+
+    return shim_tl
+
 
 def get_points_from_trajlist(traj_list):
     """Get a list of points from multiple trajectories.
-    
+
     This can be used for clustering, mixture modeling, etc but is
     inappropriate for e.g. training an HMM.
     """
@@ -47,7 +72,7 @@ def get_points_from_trajlist(traj_list):
     for traj in traj_list:
         points = np.append(points, traj, axis=0)
     return points
-        
+
 
 def get_points(stride, directory="../test_trajs/", dim=2):
     """Returns a numpy array of xy points."""
@@ -56,20 +81,20 @@ def get_points(stride, directory="../test_trajs/", dim=2):
     for f in files:
         if f.endswith('.h5'):
             traj = mdtraj.load("%s/%s" % (directory, f))
-                        
+
             # Get x and y of the first particle
             xy = traj.xyz[:, 0, 0:dim]
-            
-            # Add them to the list 
+
+            # Add them to the list
             points = np.append(points, xy, axis=0)
-    
-    
+
+
     n_points = len(points)
     points = points[::stride    , :]
     n_points_left = len(points)
     print("Loaded %d points. Using %d (%f %%)" % (n_points, n_points_left, 100 * n_points_left / n_points))
-    
-    return points    
+
+    return points
 
 class ShimTrajectory(dict):
     """This is a dict that can be used to interface some xyz coordinates
@@ -86,5 +111,5 @@ class ShimTrajectory(dict):
 
     def __len__(self):
         return len(self['XYZList'])
-    
-    
+
+

@@ -65,6 +65,7 @@ def get_mixture_model(points, min_k, max_k, fix_k=None):
 
             if prev_bic is not None and bic > prev_bic:
                 min_mm = prev_mm
+                print("\tUsing k = %d" % (k - 1))
                 break
 
             prev_bic = bic
