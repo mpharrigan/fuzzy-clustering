@@ -25,7 +25,7 @@ def _row_normalize(t_matrix):
 def plot_trajectories(traj_list):
     pp.clf()
     for traj in traj_list:
-        pp.plot(traj[:, 0], traj[:, 1])
+        pp.plot(traj[:, 0], traj[:, 1],'o')
     
 
 def build_sample_hmm():
@@ -36,23 +36,26 @@ def build_sample_hmm():
     # Set up system
     t_matrix = [
                 [10, 2, 5],
-                [1, 9, 0],
-                [5, 1, 7]]
+                [1, 10, 0],
+                [5, 1, 10]]
+    t_matrix = _row_normalize(t_matrix)
+    
     means = [
              [0.0, 0.0],
-             [1.0, 0.1],
-             [0.8, 0.8]]
+             [5.0, 1.1],
+             [6.8, 6.8]]
     
     covars = [0] * len(means)
     covars[0] = [[0.5, 0.0],
                  [0.0, 0.5]]
-    covars[1] = [[0.1, 0.1],
-                 [3.0, 3.0]]
+    covars[1] = [[0.5, 1.0],
+                 [1.0, 0.5]]
     covars[2] = [[0.3, 0.3],
                  [0.0, 0.5]]
     covars = np.array(covars)
     
-    initial_occupancy = [1.0, 0.0, 0.0]
+    initial_occupancy = [1.0 / len(means)] * len(means)
+    print(initial_occupancy)
     
     # matrix arrangement
     emissions = [[means[j], covars[j].flatten()] for j in xrange(len(means))]
@@ -65,10 +68,7 @@ def build_sample_hmm():
     
     return hmm
 
-def unflatten(dim):
-    """Take a flattened trajectory/sequence TODO: update docs
-    
-    and turn it into normal trajectories."""
+
 
 def sample_from_hmm(hmm, n_trajs, traj_len):
     domain = hmm.emissionDomain
@@ -88,11 +88,11 @@ def sample_from_hmm(hmm, n_trajs, traj_len):
     return traj_list
 
 
-def test_hmm():
+def test_hmm(n_trajs=5, traj_len=200):
     hmm = build_sample_hmm()
-    t_matrix_constructed = _get_t_matrix(hmm)
     traj_list = sample_from_hmm(hmm, n_trajs, traj_len)
+    plot_trajectories(traj_list)
+    pp.show()
     
-    mullerforce.plot_trajectories(traj_list)  # TODO: Implement this
     
-    t_matrix_learned = mixture.hmm(traj_list)
+#     t_matrix_learned = mixture.hmm(traj_list)
