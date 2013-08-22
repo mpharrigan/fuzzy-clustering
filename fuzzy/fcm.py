@@ -305,6 +305,7 @@ def analyze_msm(t_matrix, centroids, desc, neigen=4, show=False):
     print("1/lambda:\t%s" % oolambda.__str__())
 
     if show: plot_eigens(centroids, vec, val, desc)
+    return oolambda
 
 def build_new(centroids, trajs, fuzziness, dist, soft=True, neigen=4, show=False, desc=None):
     """Build an MSM from points and centroids.

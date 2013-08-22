@@ -27,6 +27,7 @@ def _row_normalize(t_matrix):
 
 
 def plot_trajectories(traj_list):
+    """Plot multiple trajectories in different colors."""
     pp.clf()
     for traj in traj_list:
         pp.plot(traj[:, 0], traj[:, 1], 'o-')
@@ -44,7 +45,27 @@ def plot_t_matrix(t_matrix, color, alpha=0.5):
     pp.xlim(-1, n_states)
     pp.ylim(-1, n_states)
 
+def plot_lambda_bar(oolambdas, descs):
 
+    little_sep = 1.0
+    width = little_sep
+    big_sep = little_sep * (len(oolambdas) + 2)
+    max_n_eigen = 0
+
+    colors = ['r', 'b', 'y', 'g', 'k']
+
+    pp.clf()
+    for i in xrange(len(oolambdas)):
+        ool = oolambdas[i]
+        xlocs = np.arange(0, len(ool) * big_sep, big_sep) + i * little_sep
+        pp.bar(xlocs, ool, width=width, color=colors[i], label=descs[i])
+        if len(ool) > max_n_eigen:
+            max_n_eigen = len(ool)
+
+    avg_offset = len(oolambdas) * little_sep / 2.0
+    xlocs = np.arange(0, max_n_eigen * big_sep, big_sep) + avg_offset
+    pp.xticks(xlocs, ["Eigenvalue %d" % (i + 1) for i in range(max_n_eigen)])
+    pp.legend()
 
 def build_sample_hmm():
     """Build an HMM from a constructed transition matrix and artificial
@@ -89,6 +110,7 @@ def build_sample_hmm():
 
 
 def sample_from_hmm(hmm, n_trajs, traj_len):
+    """From an hmm, generate a list of trajectories."""
     domain = hmm.emissionDomain
     dim = hmm.cmodel.dim
 
@@ -105,46 +127,54 @@ def sample_from_hmm(hmm, n_trajs, traj_len):
 
     return traj_list
 
+def compare_t_matrices(t_matrix1, t_matrix2, desc="T-matrix compare"):
+    pp.clf()
+    plot_t_matrix(t_matrix1, 'b')
+    plot_t_matrix(t_matrix2, 'r')
+    pp.title(desc)
 
+def test_hmm(n_trajs=10, traj_len=1000, show=False):
+    """Test various schemes."""
 
-def test_hmm(n_trajs=5, traj_len=200):
+    # Build model and sample
     hmm = build_sample_hmm()
     traj_list = sample_from_hmm(hmm, n_trajs, traj_len)
-    plot_trajectories(traj_list)
-    if False: pp.show()
-
-    t_matrix = mixture.hmm(traj_list, min_k=2, max_k=10, lag_time=1, n_eigen=4, show=False)
     constructed_t_matrix = _get_t_matrix(hmm)
+    constructed_lambda = fcm.analyze_msm(constructed_t_matrix, None, "Construction", neigen=3, show=False)
 
-    pp.clf()
-    plot_t_matrix(t_matrix, 'b')
-    plot_t_matrix(t_matrix, 'r')
-    if True: pp.show()
+    # View trajectories
+    plot_trajectories(traj_list)
+    if show: pp.show()
+
+    # Do HMM
+    hmm_t_matrix = mixture.hmm(traj_list, min_k=2, max_k=10, lag_time=1, n_eigen=3, show=False)
+    hmm_lambda = fcm.analyze_msm(hmm_t_matrix, None, "HMM", neigen=3, show=False)
+
+
+    # Compare matrices
+    compare_t_matrices(constructed_t_matrix, hmm_t_matrix, "Constructed vs. HMM")
+    if show: pp.show()
 
     # Do classic
     clustering.logger.setLevel('ERROR')
     metric = euclidean.Euclidean2d()
     shim_t = get_data.get_shimtraj_from_trajlist(traj_list)
     classic_t_matrix = fcm.classic(shim_t, n_clusters=3, n_medoid_iters=10, metric=metric, lag_time=1, show=False)
+    classic_lambda = fcm.analyze_msm(classic_t_matrix, None, desc="Classic", neigen=3, show=False)
 
+    # Compare matrices
+    compare_t_matrices(constructed_t_matrix, classic_t_matrix, "Constructed vs. Classic")
+    if show: pp.show()
 
-    pp.clf()
-    plot_t_matrix(constructed_t_matrix, 'b')
-    plot_t_matrix(classic_t_matrix, 'r')
+    # Do big k classic
+    big_classic_t_matrix = fcm.classic(shim_t, n_clusters=200, n_medoid_iters=10, metric=metric, lag_time=1, show=False)
+    big_classic_lambda = fcm.analyze_msm(big_classic_t_matrix, None, desc="Classic (large k)", neigen=5, show=False)
+
+    # Plot Eigenvalues
+    plot_lambda_bar([constructed_lambda, hmm_lambda, classic_lambda, big_classic_lambda], ('Construction', 'HMM', 'Classic k=3', 'Classic k=200'))
     pp.show()
 
-
-    # Do classic again with many states
-    shim_t = get_data.get_shimtraj_from_trajlist(traj_list)
-    classic_t_matrix = fcm.classic(shim_t, n_clusters=100, n_medoid_iters=10, metric=metric, lag_time=1, show=False)
-
-
-    pp.clf()
-    plot_t_matrix(constructed_t_matrix, 'b')
-    plot_t_matrix(classic_t_matrix, 'r')
-    pp.show()
-
-    return t_matrix, constructed_t_matrix, classic_t_matrix
+    return constructed_t_matrix, hmm_t_matrix, classic_t_matrix
 
 
 if __name__ == "__main__":
