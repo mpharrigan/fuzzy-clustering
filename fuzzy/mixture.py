@@ -139,10 +139,10 @@ def perform_optimization(hidden_mm, trajs, n_steps=1000):
 
     return new_t_matrix
 
-def hmm(traj_list, min_k=3, max_k=20, lag_time=1, n_eigen=4, show=False):
-    """Self-contained method to perform full HMM analysis."""
+def hmm(traj_list, min_k=3, max_k=20, lag_time=1, n_eigen=4, fix_k=None, show=False):
+    """Build a hidden markov model from a list of trajectories"""
     points = get_data.get_points_from_trajlist(traj_list)
-    mixture_model = get_mixture_model(points, min_k, max_k)
+    mixture_model = get_mixture_model(points, min_k, max_k, fix_k)
     centroids = mixture_model.means_
     memberships = mixture_model.predict_proba(points)
 

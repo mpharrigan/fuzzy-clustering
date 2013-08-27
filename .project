@@ -3,6 +3,7 @@
 	<name>fuzzy-clustering</name>
 	<comment></comment>
 	<projects>
+		<project>msm-toys</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
