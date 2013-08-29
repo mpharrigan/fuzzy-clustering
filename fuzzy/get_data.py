@@ -47,7 +47,7 @@ def get_shimtraj_from_trajlist(traj_list):
     temp_traj = traj_list[0]
     dimdiff = 0
     if temp_traj.shape[1] < 3:
-            dimdiff = 3 - temp_traj.shape[1]
+        dimdiff = 3 - temp_traj.shape[1]
 
     for traj in traj_list:
         if dimdiff > 0:
