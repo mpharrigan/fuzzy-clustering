@@ -11,7 +11,10 @@ def get_implied_timescales(t_matrix, n_timescales=4, lag_time=1):
     vals, vecs = msma.get_eigenvectors(t_matrix, n_eigs=n_timescales + 1)
 
     implied_timescales = -lag_time / np.log(vals[1:])
-    return implied_timescales
+    implied_timescales_pad = np.pad(implied_timescales,
+                                    (0, n_timescales - len(implied_timescales)),
+                                    mode='constant')
+    return implied_timescales_pad
 
 def plot_lambda_bar(implied_timescales, descs, logplot=False):
     """Plot implied timescales on a bar chart."""

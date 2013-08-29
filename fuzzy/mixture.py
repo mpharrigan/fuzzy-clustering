@@ -112,7 +112,8 @@ def get_hidden_markov_model(mixture_model, guess_t_matrix):
                                  emissions, initial_occupancy)
     return model
 
-def perform_optimization(hidden_mm, trajs, n_steps=1000):
+def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True,
+                         n_steps=1000):
     """Optimize a hidden markov model given a list of trajectories.
 
     Use the Baum-Welch algorithm for learning the transition matrix, fixing
@@ -122,8 +123,20 @@ def perform_optimization(hidden_mm, trajs, n_steps=1000):
     # Domains for our multivariate gaussians
     domain = hidden_mm.emissionDomain
 
+    # Do sliding window
+    if sliding_window:
+        # A naive way of doing this is by multiplying trajectories
+        slides = xrange(lag_time)
+        lagged_trajs = list()
+        for i in xrange(len(trajs)):
+            traj = trajs[i]
+            for slide in slides:
+                lagged_trajs.append(traj[slide::lag_time])
+    else:
+        lagged_trajs = [t[::lag_time] for t in trajs]
+
     # Prepare the trajectories by flattening them to 1D
-    prepared_trajs = [t.flatten().tolist() for t in trajs]
+    prepared_trajs = [t.flatten().tolist() for t in lagged_trajs]
     # Build the c-style sequences object manually
     (seq_c, lengths) = ghmmhelper.list2double_matrix(prepared_trajs)
     lengths_c = ghmmwrapper.list2int_array(lengths)
@@ -140,10 +153,41 @@ def perform_optimization(hidden_mm, trajs, n_steps=1000):
 
     return new_t_matrix
 
-def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1):
-    """Build a hidden markov model from a list of trajectories"""
+def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
+        sliding_window=True):
+    """Build a hidden markov model from a list of trajectories.
+
+    This function will first create a mixture model and then use the
+    Baum-Welch algorithm to learn the hidden transition matrix.
+
+    The number of mixture components can be determined by maximizing
+    the BIC or by specifying a fixed number
+
+    :param traj_list: List of tranjectories
+    :param min_k: The number at which to start searching for the optimal
+                    number of mixture components
+    :param max_k: The maximum number of mixture components to use.
+    :param fix_k: If none, find the best number of mixture components within
+                    restraints. Otherwise, use precisely fix_k number of
+                    components
+    :param lag_time: The lag time of the model. #TODO: This doesn't do
+                    anything maybe
+    :param sliding_window: Whether to use a sliding window with lag_time
+    :type sliding_window: bool
+    :returns: scipy.sparse.csr_matrix -- transition matrix
+    :type min_k: int
+    :type max_k: int
+    :type fix_k: int or None
+    :type traj_list: list
+    :type lag_time: int
+    """
+    if not sliding_window:
+        lt_stride = lag_time
+    else:
+        lt_stride = 1
+
     points = get_data.get_points_from_trajlist(traj_list)
-    mixture_model = get_mixture_model(points, min_k, max_k, fix_k)
+    mixture_model = get_mixture_model(points[::lt_stride], min_k, max_k, fix_k)
     memberships = mixture_model.predict_proba(points)
 
     # Build an initial MSM as a guess
@@ -155,9 +199,8 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1):
     # Learn from trajectories in HMM
     print("Performing Baum-Welch algorithm")
     hidden_mm = get_hidden_markov_model(mixture_model, t_matrix)
-    t_matrix = perform_optimization(hidden_mm, traj_list)
-
-    print("Done.")
+    t_matrix = perform_optimization(hidden_mm, traj_list, lag_time=lag_time,
+                                    sliding_window=sliding_window)
 
     return t_matrix, mixture_model
 
