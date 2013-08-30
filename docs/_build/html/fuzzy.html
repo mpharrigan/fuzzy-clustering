@@ -27,7 +27,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="fuzzy 1.0.0 documentation" href="index.html" />
     <link rel="next" title="old Package" href="fuzzy.old.html" />
-    <link rel="prev" title="Welcome to fuzzy’s documentation!" href="index.html" /> 
+    <link rel="prev" title="Fuzzy MSM Builder" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -43,7 +43,7 @@
           <a href="fuzzy.old.html" title="old Package"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to fuzzy’s documentation!"
+          <a href="index.html" title="Fuzzy MSM Builder"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">fuzzy 1.0.0 documentation</a> &raquo;</li> 
       </ul>
@@ -53,11 +53,13 @@
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">fuzzy Package</a><ul>
+<li><a class="reference internal" href="#id1"><tt class="docutils literal"><span class="pre">fuzzy</span></tt> Package</a></li>
 <li><a class="reference internal" href="#module-fuzzy.analysis"><tt class="docutils literal"><span class="pre">analysis</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-fuzzy.buildmsm"><tt class="docutils literal"><span class="pre">buildmsm</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-fuzzy.classic"><tt class="docutils literal"><span class="pre">classic</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-fuzzy.get_data"><tt class="docutils literal"><span class="pre">get_data</span></tt> Module</a></li>
 <li><a class="reference internal" href="#module-fuzzy.mixture"><tt class="docutils literal"><span class="pre">mixture</span></tt> Module</a></li>
+<li><a class="reference internal" href="#module-fuzzy.validate"><tt class="docutils literal"><span class="pre">validate</span></tt> Module</a></li>
 <li><a class="reference internal" href="#subpackages">Subpackages</a><ul>
 </ul>
 </li>
@@ -67,7 +69,7 @@
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
-                        title="previous chapter">Welcome to fuzzy&#8217;s documentation!</a></p>
+                        title="previous chapter">Fuzzy MSM Builder</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="fuzzy.old.html"
                         title="next chapter">old Package</a></p>
@@ -99,6 +101,10 @@
             
   <div class="section" id="fuzzy-package">
 <h1>fuzzy Package<a class="headerlink" href="#fuzzy-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="id1">
+<h2><tt class="xref py py-mod docutils literal"><span class="pre">fuzzy</span></tt> Package<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<span class="target" id="module-fuzzy.__init__"></span><p>Module to implement fuzzy MSMs</p>
+</div>
 <div class="section" id="module-fuzzy.analysis">
 <span id="analysis-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">analysis</span></tt> Module<a class="headerlink" href="#module-fuzzy.analysis" title="Permalink to this headline">¶</a></h2>
 <p>Do analysis on MSMs after they have been built.</p>
@@ -254,7 +260,7 @@ outer product of time-pairs of membership vectors.</p>
 
 <dl class="function">
 <dt id="fuzzy.mixture.hmm">
-<tt class="descclassname">fuzzy.mixture.</tt><tt class="descname">hmm</tt><big>(</big><em>traj_list</em>, <em>min_k=3</em>, <em>max_k=20</em>, <em>fix_k=None</em>, <em>lag_time=1</em><big>)</big><a class="headerlink" href="#fuzzy.mixture.hmm" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">fuzzy.mixture.</tt><tt class="descname">hmm</tt><big>(</big><em>traj_list</em>, <em>min_k=3</em>, <em>max_k=20</em>, <em>fix_k=None</em>, <em>lag_time=1</em>, <em>sliding_window=True</em><big>)</big><a class="headerlink" href="#fuzzy.mixture.hmm" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build a hidden markov model from a list of trajectories.</p>
 <p>This function will first create a mixture model and then use the
 Baum-Welch algorithm to learn the hidden transition matrix.</p>
@@ -274,6 +280,7 @@ restraints. Otherwise, use precisely fix_k number of
 components</li>
 <li><strong>lag_time</strong> (<em>int</em>) &#8211; The lag time of the model. #TODO: This doesn&#8217;t do
 anything maybe</li>
+<li><strong>sliding_window</strong> (<em>bool</em>) &#8211; Whether to use a sliding window with lag_time</li>
 </ul>
 </td>
 </tr>
@@ -286,7 +293,7 @@ anything maybe</li>
 
 <dl class="function">
 <dt id="fuzzy.mixture.perform_optimization">
-<tt class="descclassname">fuzzy.mixture.</tt><tt class="descname">perform_optimization</tt><big>(</big><em>hidden_mm</em>, <em>trajs</em>, <em>n_steps=1000</em><big>)</big><a class="headerlink" href="#fuzzy.mixture.perform_optimization" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">fuzzy.mixture.</tt><tt class="descname">perform_optimization</tt><big>(</big><em>hidden_mm</em>, <em>trajs</em>, <em>lag_time</em>, <em>sliding_window=True</em>, <em>n_steps=1000</em><big>)</big><a class="headerlink" href="#fuzzy.mixture.perform_optimization" title="Permalink to this definition">¶</a></dt>
 <dd><p>Optimize a hidden markov model given a list of trajectories.</p>
 <p>Use the Baum-Welch algorithm for learning the transition matrix, fixing
 emission probabilities.</p>
@@ -313,6 +320,81 @@ occupied state will be the state with the highest occupation.</p>
 <p>Use this function to test that building an msm from memberships produces
 the same results as building an msm from a state list with the msmbuilder
 package.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-fuzzy.validate">
+<span id="validate-module"></span><h2><tt class="xref py py-mod docutils literal"><span class="pre">validate</span></tt> Module<a class="headerlink" href="#module-fuzzy.validate" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="fuzzy.validate.ValidationData">
+<em class="property">class </em><tt class="descclassname">fuzzy.validate.</tt><tt class="descname">ValidationData</tt><big>(</big><em>n_its</em>, <em>*params</em><big>)</big><a class="headerlink" href="#fuzzy.validate.ValidationData" title="Permalink to this definition">¶</a></dt>
+<dd><p>Container for our various results.</p>
+<dl class="method">
+<dt id="fuzzy.validate.ValidationData.get_param_iter">
+<tt class="descname">get_param_iter</tt><big>(</big><big>)</big><a class="headerlink" href="#fuzzy.validate.ValidationData.get_param_iter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make an iterator over all permutations of parameters.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fuzzy.validate.ValidationData.translate_to_values">
+<tt class="descname">translate_to_values</tt><big>(</big><em>param_is</em><big>)</big><a class="headerlink" href="#fuzzy.validate.ValidationData.translate_to_values" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take a tuple of indices and turn it into a list of values.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="fuzzy.validate.Validator">
+<em class="property">class </em><tt class="descclassname">fuzzy.validate.</tt><tt class="descname">Validator</tt><big>(</big><em>tmatrix_fn</em>, <em>num_trajs</em>, <em>traj_len</em>, <em>stride</em>, <em>n_its</em><big>)</big><a class="headerlink" href="#fuzzy.validate.Validator" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="fuzzy.validate.Validator.calculate_analytic_its">
+<tt class="descname">calculate_analytic_its</tt><big>(</big><big>)</big><a class="headerlink" href="#fuzzy.validate.Validator.calculate_analytic_its" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate analytic results.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fuzzy.validate.Validator.calculate_hmm">
+<tt class="descname">calculate_hmm</tt><big>(</big><big>)</big><a class="headerlink" href="#fuzzy.validate.Validator.calculate_hmm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate results for HMM.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="fuzzy.validate.Validator.calculate_its">
+<tt class="descname">calculate_its</tt><big>(</big><em>tmat_func</em>, <em>anal_func</em>, <em>set_func</em><big>)</big><a class="headerlink" href="#fuzzy.validate.Validator.calculate_its" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate implied timescales given appropriate functions.</p>
+<p>This function calls <tt class="docutils literal"><span class="pre">vd.get_param_iter()</span></tt> to get the parameter
+indices over which to iterate and apply the provided functions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>tmat_func</strong> &#8211; <tt class="docutils literal"><span class="pre">tmat_func(traj_list,</span> <span class="pre">*params)</span></tt> that returns a
+transition matrix given parameters</li>
+<li><strong>anal_func</strong> &#8211; <tt class="docutils literal"><span class="pre">anal_func(t_matrix,</span> <span class="pre">*params)</span></tt> that returns implied
+timescales given a transition matrix and parameters</li>
+<li><strong>set_func</strong> &#8211; <tt class="docutils literal"><span class="pre">set_func(param_is,</span> <span class="pre">its)</span></tt> that is responsible for
+saving the results, <tt class="docutils literal"><span class="pre">its</span></tt>, at
+parameter indices <tt class="docutils literal"><span class="pre">param_is</span></tt></li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="fuzzy.validate.Validator.calculate_msm">
+<tt class="descname">calculate_msm</tt><big>(</big><big>)</big><a class="headerlink" href="#fuzzy.validate.Validator.calculate_msm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate results for MSM.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="fuzzy.validate.main">
+<tt class="descclassname">fuzzy.validate.</tt><tt class="descname">main</tt><big>(</big><em>tmatrix_fn='transition_matrix.pickl'</em>, <em>num_trajs=100</em>, <em>traj_len=5000</em>, <em>stride=10</em>, <em>n_its=6</em>, <em>results_fn='validation_results.pickl'</em><big>)</big><a class="headerlink" href="#fuzzy.validate.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Call the calculation steps in order and write the results to disk.</p>
 </dd></dl>
 
 </div>
@@ -354,7 +436,7 @@ package.</p>
           <a href="fuzzy.old.html" title="old Package"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Welcome to fuzzy’s documentation!"
+          <a href="index.html" title="Fuzzy MSM Builder"
              >previous</a> |</li>
         <li><a href="index.html">fuzzy 1.0.0 documentation</a> &raquo;</li> 
       </ul>
