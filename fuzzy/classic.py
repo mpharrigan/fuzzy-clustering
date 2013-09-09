@@ -7,14 +7,17 @@ import numpy as np
 
 
 
-def msm(traj_list, n_clusters, n_medoid_iters=10, lag_time=1):
+def msm(traj_list, n_clusters, n_medoid_iters=10, lag_time=1, distance_cutoff=None):
     """Use classic clustering methods."""
+
+    if distance_cutoff is not None:
+        n_clusters = None
 
     trajs = get_data.get_shimtraj_from_trajlist(traj_list)
     metric = Euclidean2d()
 
     clustering.logger.setLevel('WARNING')
-    hkm = clustering.HybridKMedoids(metric, trajs, k=n_clusters, local_num_iters=n_medoid_iters)
+    hkm = clustering.HybridKMedoids(metric, trajs, k=n_clusters, distance_cutoff=distance_cutoff, local_num_iters=n_medoid_iters)
     centroids = hkm.get_generators_as_traj()
 
     # centroids_nf = centroids['XYZList'][:, 0, 0:dim]

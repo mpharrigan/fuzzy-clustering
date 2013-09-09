@@ -4,9 +4,10 @@ from fuzzy import analysis, classic, mixture
 import msmtoys.analytic
 import pickle
 import itertools
+from matplotlib import pyplot as pp
 
 
-def main(tmatrix_fn='transition_matrix.pickl', num_trajs=100, traj_len=5000, stride=10, n_its=6, results_fn='validation_results.pickl'):
+def main(tmatrix_fn='transition_matrix_70.pickl', num_trajs=5, traj_len=100000, stride=10, n_its=6, results_fn='validation_results_2.pickl'):
     """Call the calculation steps in order and write the results to disk."""
 
     validator = Validator(tmatrix_fn, num_trajs, traj_len, stride, n_its)
@@ -46,7 +47,13 @@ class Validator():
         param_nclusters = range(2, 20)
         param_lagtimes = range(1, 30, 2)
 
+        # Debug
+#         param_random_seeds = range(1)
+#         param_nclusters = range(2, 4)
+#         param_lagtimes = [1, 10]
+
         self.vd = ValidationData(n_its, param_random_seeds, param_nclusters, param_lagtimes)
+        self.vd.param_string = ['random seed', 'number clusters', 'lag time']
 
         print "Using Aggregate: {:,} points".format((num_trajs * traj_len / stride))
         def trajlist_func(*params):
@@ -133,6 +140,8 @@ class ValidationData:
         self.hmm_its = np.zeros(tuple(its_shape))
         self.msm_its = np.zeros(tuple(its_shape))
 
+        self.param_string = None
+
     def get_param_iter(self):
         """Make an iterator over all permutations of parameters."""
         return itertools.product(*[xrange(len(param)) for param in self.params])
@@ -144,6 +153,35 @@ class ValidationData:
             param_i = param_is[t]
             param_values.append(self.params[t][param_i])
         return param_values
+
+    def plot(self, param_is, it_i, show=3):
+        assert len(param_is) == len(self.params)
+
+        vary_i = None
+        for i in xrange(len(param_is)):
+            if param_is[i] is None:
+                vary_i = i
+                break
+
+        xs = list()
+        for i in xrange(len(self.params[vary_i])):
+            param_is[vary_i] = i
+            x = self.translate_to_values(tuple(param_is))[vary_i]
+            xs.append(x)
+
+        param_is[vary_i] = slice(None, None, None)
+
+        if show == 1 or show == 3:
+            ys = self.hmm_its[tuple(param_is) + (it_i,)]
+            pp.plot(xs, ys, label='HMM')
+
+        if show == 2 or show == 3:
+            ys = self.msm_its[tuple(param_is) + (it_i,)]
+            pp.plot(xs, ys, label='MSM')
+
+        pp.yscale('log')
+        pp.legend()
+
 
 
 if __name__ == "__main__":

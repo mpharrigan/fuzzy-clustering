@@ -8,13 +8,17 @@ from msmbuilder import msm_analysis as msma
 
 def get_implied_timescales(t_matrix, n_timescales=4, lag_time=1):
     """Get implied timescales from a transition matrix."""
-    vals, vecs = msma.get_eigenvectors(t_matrix, n_eigs=n_timescales + 1)
+    try:
+        vals, vecs = msma.get_eigenvectors(t_matrix, n_eigs=n_timescales + 1)
 
-    implied_timescales = -lag_time / np.log(vals[1:])
-    implied_timescales_pad = np.pad(implied_timescales,
-                                    (0, n_timescales - len(implied_timescales)),
-                                    mode='constant')
-    return implied_timescales_pad
+        implied_timescales = -lag_time / np.log(vals[1:])
+        implied_timescales_pad = np.pad(implied_timescales,
+                                        (0, n_timescales - len(implied_timescales)),
+                                        mode='constant')
+        return implied_timescales_pad
+    except Exception:
+        print "+++ Error getting implied timescales +++"
+        return np.zeros(n_timescales)
 
 def plot_lambda_bar(implied_timescales, descs, logplot=False):
     """Plot implied timescales on a bar chart."""
@@ -38,3 +42,43 @@ def plot_lambda_bar(implied_timescales, descs, logplot=False):
     xlocs = np.arange(0, max_n_eigen * big_sep, big_sep) + avg_offset
     pp.xticks(xlocs, ["Timescale %d" % (i + 1) for i in range(max_n_eigen)])
     pp.legend()
+
+
+def _logistic(x, center=0.5, tension=100):
+    return 1.0 / (1.0 + np.exp((-x + center) * tension))
+
+def _expo(x, strength=15.0):
+    return np.exp(strength * x) / np.exp(strength * 1.0)
+
+def plot_points_with_alpha(points, memberships):
+    """Plot points and their memberships.
+
+    Points are colored based on the cluster in which it has the highest
+    membership, and the alpha value is set to that membership value.
+    """
+    base_colors = [
+                   [224, 27, 27],  # Red
+                   [27, 224, 76],  # Green
+                   [250, 246, 0],  # Yellow
+                   [0, 29, 250],  # Blue
+                   [204, 27, 224],  # Purple
+                   ]
+    base_colors = np.array(base_colors) / 255.
+
+
+    assert len(memberships) == len(points), \
+        'Membership (%d) and points (%d) must match' \
+        % (len(memberships), len(points))
+    n = len(memberships)
+
+    colors = np.zeros((n, 4))
+    for i in xrange(n):
+        most_centroid = np.argmax(memberships[i])
+        max_occupation = memberships[i, most_centroid]
+
+        # Color based on what it belongs to most
+        colors[i, 0:3] = base_colors[most_centroid % len(base_colors)]
+        # Alpha based on degree
+        colors[i, 3] = _expo(max_occupation)
+
+    pp.scatter(points[:, 0], points[:, 1], c=colors)

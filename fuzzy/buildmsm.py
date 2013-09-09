@@ -119,7 +119,7 @@ def build_from_memberships(memberships, lag_time=1):
     pairs[:, 1, :] = to_states
 
     counts = get_counts_from_pairs(pairs, n_clusters)
-    rev_counts, t_matrix, populations, mapping = msm.build_msm(counts)
+    rev_counts, t_matrix, populations, mapping = msm.build_msm(counts, ergodic_trimming=False)
     return rev_counts, t_matrix, populations, mapping
 
 def build_classic_from_memberships(memberships, lag_time=1):

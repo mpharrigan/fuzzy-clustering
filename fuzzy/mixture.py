@@ -78,6 +78,8 @@ def get_mixture_model(points, min_k, max_k, fix_k=None):
         min_mm = mixture.GMM(n_components=fix_k, covariance_type='full')
         min_mm.fit(points)
 
+    print min_mm.means_
+
     return min_mm
 
 def get_hidden_markov_model(mixture_model, guess_t_matrix):
@@ -113,7 +115,7 @@ def get_hidden_markov_model(mixture_model, guess_t_matrix):
     return model
 
 def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True,
-                         n_steps=1000):
+                         n_steps=10000):
     """Optimize a hidden markov model given a list of trajectories.
 
     Use the Baum-Welch algorithm for learning the transition matrix, fixing
@@ -147,14 +149,11 @@ def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True,
     # Perform the Baum Welch optimization
     likelihood = hidden_mm.baumWelch(train_seq, nrSteps=n_steps)
 
-    # Get the transition matrix in the normal form
-    new_t_matrix = hidden_mm.asMatrices()[0]
-    new_t_matrix = scipy.sparse.csr_matrix(new_t_matrix)
 
-    return new_t_matrix
+    return hidden_mm
 
 def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
-        sliding_window=True):
+        sliding_window=True, mm_stride=1):
     """Build a hidden markov model from a list of trajectories.
 
     This function will first create a mixture model and then use the
@@ -187,7 +186,7 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
         lt_stride = 1
 
     points = get_data.get_points_from_trajlist(traj_list)
-    mixture_model = get_mixture_model(points[::lt_stride], min_k, max_k, fix_k)
+    mixture_model = get_mixture_model(points[::max(lt_stride, mm_stride)], min_k, max_k, fix_k)
     memberships = mixture_model.predict_proba(points)
 
     # Build an initial MSM as a guess
@@ -199,10 +198,14 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
     # Learn from trajectories in HMM
     print("Performing Baum-Welch algorithm")
     hidden_mm = get_hidden_markov_model(mixture_model, t_matrix)
-    t_matrix = perform_optimization(hidden_mm, traj_list, lag_time=lag_time,
+    hidden_mm = perform_optimization(hidden_mm, traj_list, lag_time=lag_time,
                                     sliding_window=sliding_window)
 
-    return t_matrix, mixture_model
+    # Get the transition matrix in the normal form
+    new_t_matrix = hidden_mm.asMatrices()[0]
+    new_t_matrix = scipy.sparse.csr_matrix(new_t_matrix)
+
+    return new_t_matrix, hidden_mm
 
 # def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4, lag_time=10):
 #     """Run a bunch of functions to test the various schemes."""

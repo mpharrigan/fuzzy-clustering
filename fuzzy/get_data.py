@@ -15,10 +15,15 @@ def get_trajs(directory="../test_trajs/", dim=2, retrieve='justpoints'):
      - 'shimtrajs':  trajectories suitable for use with msmbuilder2
      """
     files = os.listdir(directory)
+    files = [os.path.join(directory, f) for f in files]
+    return get_trajs_from_fn_list(files, dim, retrieve)
+
+
+def get_trajs_from_fn_list(fn_list, dim=2, retrieve='justpoints'):
     trajlist = list()
-    for f in files:
+    for f in fn_list:
         if f.endswith('.h5'):
-            traj = mdtraj.load("%s/%s" % (directory, f))
+            traj = mdtraj.load(f)
 
             if retrieve == 'justpoints':
                 # Get x and y of the first particle
@@ -88,13 +93,21 @@ def get_points(stride, directory="../test_trajs/", dim=2):
             # Add them to the list
             points = np.append(points, xy, axis=0)
 
-
     n_points = len(points)
     points = points[::stride    , :]
     n_points_left = len(points)
     print("Loaded %d points. Using %d (%f %%)" % (n_points, n_points_left, 100 * n_points_left / n_points))
 
     return points
+
+def get_from_fs(directory='XTC/', top_fn='native.pdb'):
+    traj_list = list()
+    for dir, _, fns in os.walk(directory):
+        if len(fns) > 0:
+            for fn in fns:
+                fn = os.path.join(dir, fn)
+                traj_list.append(mdtraj.load(fn, top=top_fn))
+    return traj_list
 
 class ShimTrajectory(dict):
     """This is a dict that can be used to interface some xyz coordinates
