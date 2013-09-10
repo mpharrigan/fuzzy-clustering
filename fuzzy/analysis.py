@@ -47,7 +47,7 @@ def plot_lambda_bar(implied_timescales, descs, logplot=False):
 def _logistic(x, center=0.5, tension=100):
     return 1.0 / (1.0 + np.exp((-x + center) * tension))
 
-def _expo(x, strength=15.0):
+def _expo(x, strength=5.0):
     return np.exp(strength * x) / np.exp(strength * 1.0)
 
 def plot_points_with_alpha(points, memberships):
@@ -61,7 +61,10 @@ def plot_points_with_alpha(points, memberships):
                    [27, 224, 76],  # Green
                    [250, 246, 0],  # Yellow
                    [0, 29, 250],  # Blue
-                   [204, 27, 224],  # Purple
+                   [221, 60, 230],  # Light Purple
+                   [209, 140, 13],  # Brown
+                   [5, 243, 255],  # Cyan
+                   [102, 24, 204]  # Dark purple
                    ]
     base_colors = np.array(base_colors) / 255.
 
@@ -80,5 +83,7 @@ def plot_points_with_alpha(points, memberships):
         colors[i, 0:3] = base_colors[most_centroid % len(base_colors)]
         # Alpha based on degree
         colors[i, 3] = _expo(max_occupation)
+        colors[i, 3] = 1.0
+
 
     pp.scatter(points[:, 0], points[:, 1], c=colors)

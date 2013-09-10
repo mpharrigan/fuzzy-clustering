@@ -40,7 +40,7 @@ def get_trajs_from_fn_list(fn_list, dim=2, retrieve='justpoints'):
 
     return trajlist
 
-def get_shimtraj_from_trajlist(traj_list):
+def get_shimtraj_from_trajlist(traj_list, dim=3):
     """Get a shimmed trajectory from a list of points.
 
     Used for using classic clustering from a constructed model."""
@@ -51,14 +51,14 @@ def get_shimtraj_from_trajlist(traj_list):
     # See if we need to pad a third coordinate
     temp_traj = traj_list[0]
     dimdiff = 0
-    if temp_traj.shape[1] < 3:
-        dimdiff = 3 - temp_traj.shape[1]
+    if temp_traj.shape[1] < dim:
+        dimdiff = dim - temp_traj.shape[1]
 
     for traj in traj_list:
         if dimdiff > 0:
             padding = np.zeros((traj.shape[0], dimdiff))
             traj = np.append(traj, padding, axis=1)
-        traj = np.reshape(traj, (traj.shape[0], 1, 3))
+        traj = np.reshape(traj, (traj.shape[0], 1, dim))
         shim_t = ShimTrajectory(traj)
         shim_tl.append(shim_t)
 

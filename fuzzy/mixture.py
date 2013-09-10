@@ -152,6 +152,7 @@ def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True,
 
     return hidden_mm
 
+
 def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
         sliding_window=True, mm_stride=1):
     """Build a hidden markov model from a list of trajectories.

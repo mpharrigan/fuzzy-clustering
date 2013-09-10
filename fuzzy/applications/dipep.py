@@ -4,7 +4,7 @@ from fuzzy import get_data
 import os
 from mdtraj.geometry import dihedral
 import numpy as np
-from fuzzy import mixture, analysis
+from fuzzy import mixture, analysis, classic, buildmsm
 import sklearn.mixture
 from matplotlib import pyplot as pp
 
@@ -29,12 +29,12 @@ class Dipeptide():
             # Compute actual angles
             diheds = dihedral.compute_dihedrals(traj, Dipeptide.INDICES, opt=False)
 
+
             # Compute sin and cos
             num_diheds = diheds.shape[1]
             per_diheds = np.zeros((diheds.shape[0], num_diheds * 2))
-            for dihed_num in xrange(diheds.shape[1]):
-                per_diheds[:, dihed_num * 2] = np.sin(diheds[:, dihed_num])
-                per_diheds[:, dihed_num * 2 + 1] = np.cos(diheds[:, dihed_num])
+            per_diheds[:, 0:num_diheds] = np.sin(diheds)
+            per_diheds[:, num_diheds:num_diheds * 2] = np.cos(diheds)
 
             # Save
             traj_list.append(per_diheds)
@@ -42,6 +42,27 @@ class Dipeptide():
 
         self.traj_list = traj_list
         self.traj_list_angles = traj_list_angles
+
+    def compute_hmm_from_mm(self):
+        points = get_data.get_points_from_trajlist(self.traj_list)
+        memberships = self.mixture_model.predict_proba(points)
+
+        # Build an initial MSM as a guess
+        print("Building guess transition matrix from mixture model " +
+                 "and outer product")
+        rev_counts, t_matrix, populations, mapping = \
+                    buildmsm.build_from_memberships(memberships, lag_time=1)
+
+        # Learn from trajectories in HMM
+        print("Performing Baum-Welch algorithm")
+        hidden_mm = mixture.get_hidden_markov_model(self.mixture_model, t_matrix)
+        hidden_mm = mixture.perform_optimization(hidden_mm, self.traj_list, lag_time=1)
+
+        # Get the transition matrix in the normal form
+        new_t_matrix = hidden_mm.asMatrices()[0]
+        self.hmm = hidden_mm
+        self.redo_mm()
+        return new_t_matrix, hidden_mm
 
     def compute_hmm(self, k):
         if k is not None:
@@ -74,23 +95,61 @@ class Dipeptide():
     def plot(self):
         means = self.mixture_model.means_
         meansconv = np.zeros((means.shape[0], 2))
-        meansconv[:, 0] = _radian(means[:, 0:2])
-        meansconv[:, 1] = _radian(means[:, 2:4])
+        meansconv[:, 0] = _from_sincos(means[:, ::2])
+        meansconv[:, 1] = _from_sincos(means[:, 1::2])
         meansconv *= (180. / np.pi)
+
+#         meansconv = self.mixture_model.means_ * (180. / np.pi)
 
         for i in xrange(len(self.traj_list)):
 
             traj_act = self.traj_list_angles[i] * (180. / np.pi)
             traj_per = self.traj_list[i]
 
-            plot_stride = 50
-            memberships = self.mixture_model.predict_proba(traj_per)
             _, memberships = self.mixture_model.score_samples(traj_per)
-            analysis.plot_points_with_alpha(traj_act[::plot_stride, [1, 0]], memberships[::plot_stride, ...])
+            analysis.plot_points_with_alpha(traj_act[:, [1, 0]], memberships)
 
-        pp.scatter(meansconv[:, 1], meansconv[:, 0], color='k', s=100, zorder=10)
+        # Plot means
+        pp.scatter(meansconv[:, 1], meansconv[:, 0], facecolors='w', edgecolors='k', s=100, zorder=10)
+
+    def plot_classic(self, ass, n_clusters):
+        means = self.mixture_model.means_
+        meansconv = np.zeros((means.shape[0], 2))
+        meansconv[:, 0] = _from_sincos(means[:, ::2])
+        meansconv[:, 1] = _from_sincos(means[:, 1::2])
+        meansconv *= (180. / np.pi)
+
+#         meansconv = self.mixture_model.means_ * (180. / np.pi)
+
+        for i in xrange(len(self.traj_list)):
+
+            traj_act = self.traj_list_angles[i] * (180. / np.pi)
+
+            memberships = list()
+            for j in xrange(len(traj_act)):
+                mem = np.zeros(n_clusters)
+                mem[ass[i, j]] = 1.0
+                memberships.append(mem)
+            memberships = np.array(memberships)
+            analysis.plot_points_with_alpha(traj_act[:, [1, 0]], memberships)
 
 
-def _radian(sincos):
+        # Plot means
+        pp.scatter(meansconv[:, 1], meansconv[:, 0], facecolors='w', edgecolors='k', s=100, zorder=10)
+
+    def medoids(self, n_clusters, dim):
+        hkm = classic.cluster(self.traj_list, n_clusters, n_medoid_iters=5, dim=dim)
+
+        if not hasattr(self, 'mixture_model'):
+            self.mixture_model = sklearn.mixture.GMM(n_components=dim, params='wmc', init_params='', covariance_type='full')
+
+        self.mixture_model.means_ = hkm.get_generators_as_traj()['XYZList'][:, 0, :]
+        self.mixture_model.covars_ = np.array([np.identity(dim) * 1.0 for _ in xrange(n_clusters)])
+        self.mixture_model.weights_ = np.ones(n_clusters)
+        self.mixture_model.n_components = n_clusters
+        return hkm
+
+
+def _from_sincos(sincos):
     return np.arctan2(sincos[:, 0], sincos[:, 1])
 
