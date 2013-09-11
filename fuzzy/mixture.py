@@ -51,7 +51,7 @@ def quantize_memberships(memberships):
     return new_memberships
 
 
-def get_mixture_model(points, min_k, max_k, fix_k=None):
+def get_mixture_model(points, min_k, max_k, fix_k=None, mm_stride=1):
     """Find the best mixture model based on BIC."""
     prev_mm = None
     prev_bic = None
@@ -60,7 +60,7 @@ def get_mixture_model(points, min_k, max_k, fix_k=None):
     if fix_k is None:
         for k in xrange(min_k, max_k):
             mm = mixture.GMM(n_components=k, covariance_type='full')
-            mm.fit(points)
+            mm.fit(points[::mm_stride])
 
             bic = mm.bic(points)
             print("Trying k = %d, BIC = %g" % (k, bic))
@@ -76,9 +76,7 @@ def get_mixture_model(points, min_k, max_k, fix_k=None):
         del mm
     else:
         min_mm = mixture.GMM(n_components=fix_k, covariance_type='full')
-        min_mm.fit(points)
-
-    print min_mm.means_
+        min_mm.fit(points[::mm_stride])
 
     return min_mm
 
@@ -114,8 +112,7 @@ def get_hidden_markov_model(mixture_model, guess_t_matrix):
                                  emissions, initial_occupancy)
     return model
 
-def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True,
-                         n_steps=10000):
+def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True):
     """Optimize a hidden markov model given a list of trajectories.
 
     Use the Baum-Welch algorithm for learning the transition matrix, fixing
@@ -147,7 +144,7 @@ def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True,
     # Make a SequenceSet wrapper around the c-style object
     train_seq = ghmm.SequenceSet(domain, cseq)
     # Perform the Baum Welch optimization
-    likelihood = hidden_mm.baumWelch(train_seq, nrSteps=n_steps)
+    likelihood = hidden_mm.baumWelch(train_seq, nrSteps=10000000)
 
 
     return hidden_mm
@@ -187,7 +184,7 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
         lt_stride = 1
 
     points = get_data.get_points_from_trajlist(traj_list)
-    mixture_model = get_mixture_model(points[::max(lt_stride, mm_stride)], min_k, max_k, fix_k)
+    mixture_model = get_mixture_model(points, min_k, max_k, fix_k, mm_stride)
     memberships = mixture_model.predict_proba(points)
 
     # Build an initial MSM as a guess
@@ -206,7 +203,7 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
     new_t_matrix = hidden_mm.asMatrices()[0]
     new_t_matrix = scipy.sparse.csr_matrix(new_t_matrix)
 
-    return new_t_matrix, hidden_mm
+    return new_t_matrix, hidden_mm, mixture_model
 
 # def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4, lag_time=10):
 #     """Run a bunch of functions to test the various schemes."""

@@ -83,7 +83,7 @@ def plot_points_with_alpha(points, memberships):
         colors[i, 0:3] = base_colors[most_centroid % len(base_colors)]
         # Alpha based on degree
         colors[i, 3] = _expo(max_occupation)
-        colors[i, 3] = 1.0
+        colors[i, 3] = max_occupation
 
 
     pp.scatter(points[:, 0], points[:, 1], c=colors)
