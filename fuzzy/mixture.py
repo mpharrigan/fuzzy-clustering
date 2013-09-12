@@ -80,6 +80,22 @@ def get_mixture_model(points, min_k, max_k, fix_k=None, mm_stride=1):
 
     return min_mm
 
+def redo_mixture_model(optimized_hmm):
+    matrices = optimized_hmm.asMatrices()
+    means = np.array([matrices[1][j][0] for j in xrange(len(matrices[1]))])
+    n_components = means.shape[0]
+    n_features = means.shape[1]
+    covars = np.array([matrices[1][j][1] for j in xrange(len(matrices[1]))])
+    covars = np.reshape(covars, (n_components, n_features, n_features))
+    weights = np.array(matrices[2])
+
+    mm = mixture.GMM(n_components=n_components, params='', init_params='', covariance_type='full')
+    mm.means_ = means
+    mm.covars_ = covars
+    mm.weights_ = weights
+
+    return mm
+
 def get_hidden_markov_model(mixture_model, guess_t_matrix):
     """Get an (unoptomized) hidden markov model from the mixture model and
     a guess at the transition matrix.
@@ -184,40 +200,41 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
         lt_stride = 1
 
     points = get_data.get_points_from_trajlist(traj_list)
-    mixture_model = get_mixture_model(points, min_k, max_k, fix_k, mm_stride)
-    memberships = mixture_model.predict_proba(points)
+    first_mixture_model = get_mixture_model(points, min_k, max_k, fix_k, mm_stride)
+    memberships = first_mixture_model.predict_proba(points)
 
     # Build an initial MSM as a guess
-    print("Building guess transition matrix from mixture model " +
-             "and outer product")
+    print("Building guess transition matrix from discretization of mixture model")
     rev_counts, t_matrix, populations, mapping = \
-                buildmsm.build_from_memberships(memberships, lag_time=lag_time)
+                buildmsm.build_classic_from_memberships(memberships, lag_time=lag_time)
 
     # Learn from trajectories in HMM
     print("Performing Baum-Welch algorithm")
-    hidden_mm = get_hidden_markov_model(mixture_model, t_matrix)
+    hidden_mm = get_hidden_markov_model(first_mixture_model, t_matrix)
     hidden_mm = perform_optimization(hidden_mm, traj_list, lag_time=lag_time,
                                     sliding_window=sliding_window)
+
+    opt_mixture_model = redo_mixture_model(hidden_mm)
 
     # Get the transition matrix in the normal form
     new_t_matrix = hidden_mm.asMatrices()[0]
     new_t_matrix = scipy.sparse.csr_matrix(new_t_matrix)
 
-    return new_t_matrix, hidden_mm, mixture_model
+    return new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model
 
 # def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4, lag_time=10):
 #     """Run a bunch of functions to test the various schemes."""
 #
 #     points = get_data.get_points(stride=1)
-#     mixture_model = get_mixture_model(points, min_k, max_k, fix_k)
+#     first_mixture_model = get_mixture_model(points, min_k, max_k, fix_k)
 #
-#     centroids = mixture_model.means_
+#     centroids = first_mixture_model.means_
 #     fcm.plot_centroids(centroids)
-#     plot_distribution(mixture_model)
+#     plot_distribution(first_mixture_model)
 #     # pp.show()
 #
 #     # Get the memberships
-#     memberships = mixture_model.predict_proba(points)
+#     memberships = first_mixture_model.predict_proba(points)
 #
 #     # Pick highest membership, put it in a classic state transition list,
 #     # and use straight msmbuilder code to build the count matrix
@@ -244,7 +261,7 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
 #                     neigen=n_eigen, show=True)
 #
 #     # Try to improve by using a HMM
-#     hidden_mm = get_hidden_markov_model(mixture_model, t_matrix)
+#     hidden_mm = get_hidden_markov_model(first_mixture_model, t_matrix)
 #     trajs = get_data.get_trajs()
 #     new_t_matrix = perform_optimization(hidden_mm, trajs)
 #
