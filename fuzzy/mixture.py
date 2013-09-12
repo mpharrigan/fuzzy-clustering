@@ -8,8 +8,9 @@ import ghmmhelper
 import ghmmwrapper
 import numpy as np
 import scipy.sparse.csr
+from msmbuilder import msm_analysis as msma
 
-def plot_distribution(mixture_model, grid, n_contours=80):
+def plot_distribution(mixture_model, grid, t_matrix=None, eigen=1, n_contours=80):
     """Plot the mixture distribution."""
 
     xx, yy = grid
@@ -18,9 +19,19 @@ def plot_distribution(mixture_model, grid, n_contours=80):
     contour_data = mixture_model.score(mixture_samples)
     contour_data = -contour_data.reshape(xx.shape)
 
+    if t_matrix is not None:
+        _, vecs = msma.get_eigenvectors(t_matrix, n_eigs=eigen)
+        sizes = vecs[-1] * 300
+        colors = ['r' if s > 0 else 'b' for s in sizes]
+        sizes = np.abs(sizes)
+    else:
+        sizes = 300
+        colors = 'y'
+
+
     # Plot means
     means = mixture_model.means_
-    pp.plot(means[:, 0], means[:, 1], 'ro', markersize=12)
+    pp.scatter(means[:, 0], means[:, 1], c=colors, s=sizes)
 
     pp.contour(xx, yy, contour_data, n_contours)
 
@@ -220,7 +231,7 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
     new_t_matrix = hidden_mm.asMatrices()[0]
     new_t_matrix = scipy.sparse.csr_matrix(new_t_matrix)
 
-    return new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model
+    return t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model
 
 # def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4, lag_time=10):
 #     """Run a bunch of functions to test the various schemes."""
