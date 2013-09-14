@@ -21,7 +21,8 @@ def plot_distribution(mixture_model, grid, t_matrix=None, eigen=1, n_contours=80
 
     if t_matrix is not None:
         _, vecs = msma.get_eigenvectors(t_matrix, n_eigs=eigen)
-        sizes = vecs[-1] * 300
+        sizes = vecs[:, -1] * 300
+        print vecs[:, -1]
         colors = ['r' if s > 0 else 'b' for s in sizes]
         sizes = np.abs(sizes)
     else:
@@ -151,7 +152,7 @@ def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True):
 
     # Do sliding window
     if sliding_window:
-        # A naive way of doing this is by multiplying trajectories
+        # A naive way of doing this is by making many trajectories
         slides = xrange(lag_time)
         lagged_trajs = list()
         for i in xrange(len(trajs)):
@@ -171,8 +172,9 @@ def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True):
     # Make a SequenceSet wrapper around the c-style object
     train_seq = ghmm.SequenceSet(domain, cseq)
     # Perform the Baum Welch optimization
-    likelihood = hidden_mm.baumWelch(train_seq, nrSteps=10000000)
+    likelihood = hidden_mm.baumWelch(train_seq, nrSteps=10000000, loglikelihoodCutoff=1.0e-5)
 
+    print "Final baum welch likelihood: {}".format(likelihood)
 
     return hidden_mm
 
