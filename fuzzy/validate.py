@@ -7,19 +7,12 @@ import itertools
 from matplotlib import pyplot as pp
 
 
-def main(tmatrix_fn='transition_matrix_70.pickl', num_trajs=5, traj_len=100000, stride=10, n_its=6, results_fn='validation_results_2.pickl'):
+def main(tmatrix_fn='transition_matrix_70.pickl', num_trajs=10, traj_len=500000, stride=1, n_its=6, results_fn='validation_results_3.pickl'):
     """Call the calculation steps in order and write the results to disk."""
 
     validator = Validator(tmatrix_fn, num_trajs, traj_len, stride, n_its)
+    validator.do_validation()
 
-    print "Calculating analytic ITs..."
-    validator.calculate_analytic_its()
-
-    print "Calculating HMM ITs..."
-    validator.calculate_hmm()
-
-    print "Calculating MSM ITs..."
-    validator.calculate_msm()
 
     print "Saving results..."
     with open(results_fn, 'w') as results_f:
@@ -37,40 +30,42 @@ class Validator():
             t_matrix, grid = pickle.load(tmatrix_f)
 
         self.t_matrix = t_matrix
+        self.grid = grid
 
         self.num_trajs = num_trajs
         self.traj_len = traj_len
         self.stride = stride
         self.n_its = n_its
 
-        param_random_seeds = range(52, 63)
+        param_random_seeds = range(10)
         param_nclusters = range(2, 20)
         param_lagtimes = range(1, 30, 2)
 
         # Debug
-#         param_random_seeds = range(1)
-#         param_nclusters = range(2, 4)
-#         param_lagtimes = [1, 10]
+        param_random_seeds = range(2)
+        param_nclusters = [2, 4]
+        param_lagtimes = [1, 10]
 
         self.vd = ValidationData(n_its, param_random_seeds, param_nclusters, param_lagtimes)
-        self.vd.param_string = ['random seed', 'number clusters', 'lag time']
 
         print "Using Aggregate: {:,} points".format((num_trajs * traj_len / stride))
-        def trajlist_func(*params):
-            return msmtoys.analytic.get_trajlist(t_matrix, grid, num_trajs, traj_len, stride, random_seed=params[0])
 
-        self.trajlist_func = trajlist_func
+        self.traj_list = None
+
+    def new_trajlist(self):
+        self.traj_list = msmtoys.analytic.get_trajlist(self.t_matrix, self.grid, self.num_trajs, self.traj_len, self.stride)
 
     def calculate_hmm(self):
         """Calculate results for HMM."""
         def tmat_func(traj_list, *params):
-            return mixture.hmm(traj_list, fix_k=params[1], lag_time=params[2], sliding_window=True)[0]
+            _, new_t_matrix, _, _, _ = mixture.hmm(traj_list, fix_k=params[1], lag_time=params[2], sliding_window=True)[0]
+            return new_t_matrix
         def anal_func(t_matrix, *params):
             return analysis.get_implied_timescales(t_matrix, n_timescales=self.n_its, lag_time=params[2] * self.stride)
         def set_func(param_is, its):
             self.vd.hmm_its[param_is] = its
 
-        self.calculate_its(tmat_func, anal_func, set_func)
+        return tmat_func, anal_func, set_func
 
     def calculate_msm(self):
         """Calculate results for MSM."""
@@ -81,7 +76,7 @@ class Validator():
         def set_func(param_is, its):
             self.vd.msm_its[param_is] = its
 
-        self.calculate_its(tmat_func, anal_func, set_func)
+        return tmat_func, anal_func, set_func
 
 
     def calculate_analytic_its(self):
@@ -89,32 +84,43 @@ class Validator():
         analytic_its = analysis.get_implied_timescales(self.t_matrix, n_timescales=self.n_its, lag_time=1)
         self.vd.analytic_its = analytic_its
 
-    def calculate_its(self, tmat_func, anal_func, set_func):
+    def calculate_its(self, tmat_funcs, anal_funcs, set_funcs):
         """Calculate implied timescales given appropriate functions.
 
         This function calls ``vd.get_param_iter()`` to get the parameter
         indices over which to iterate and apply the provided functions.
 
-        :param tmat_func: ``tmat_func(traj_list, *params)`` that returns a
+        :param tmat_funcs: list of ``tmat_func(traj_list, *params)`` that returns a
                             transition matrix given parameters
-        :param anal_func: ``anal_func(t_matrix, *params)`` that returns implied
+        :param anal_funcs: list of ``anal_func(t_matrix, *params)`` that returns implied
                             timescales given a transition matrix and parameters
-        :param set_func: ``set_func(param_is, its)`` that is responsible for
+        :param set_funcs: list of ``set_func(param_is, its)`` that is responsible for
                                         saving the results, ``its``, at
                                         parameter indices ``param_is``
         """
+        assert len(tmat_funcs) == len(anal_funcs)
+        assert len(anal_funcs) == len(set_funcs)
         progress = 0
         for param_is in self.vd.get_param_iter():
             param_values = self.vd.translate_to_values(param_is)
             print "Using parameter values", param_values
             print "Progress: %d/%d = %.2f%%" % (progress, self.vd.n_permuts, 100.0 * progress / self.vd.n_permuts)
 
-            traj_list = self.trajlist_func(*param_values)
-            t_matrix = tmat_func(traj_list, *param_values)
-            its = anal_func(t_matrix, *param_values)
-            set_func(param_is, its)
+            for _ in self.vd.get_repeats():
+                self.new_trajlist()
 
-            progress += 1
+                for tmat_func, anal_func, set_func in zip(tmat_funcs, anal_funcs, set_funcs):
+                    t_matrix = tmat_func(self.traj_list, *param_values)
+                    its = anal_func(t_matrix, *param_values)
+                    set_func(param_is, its)
+
+                progress += 1
+
+    def do_validation(self):
+        htmat, hanal, hset = self.calculate_hmm()
+        mtmat, manal, mset = self.calculate_msm()
+        self.calculate_its([htmat, mtmat], [hanal, manal], [hset, mset])
+
 
 
 class ValidationData:
@@ -134,7 +140,7 @@ class ValidationData:
         self.analytic_its = np.zeros(n_its)
 
         its_shape = [len(param) for param in params]
-        self.n_permuts = np.product(its_shape)
+        self.n_permuts = np.product(its_shape[1:])
 
         its_shape.append(n_its)
         self.hmm_its = np.zeros(tuple(its_shape))
@@ -144,7 +150,10 @@ class ValidationData:
 
     def get_param_iter(self):
         """Make an iterator over all permutations of parameters."""
-        return itertools.product(*[xrange(len(param)) for param in self.params])
+        return itertools.product(*[xrange(len(param)) for param in self.params[1:]])
+
+    def get_repeats(self):
+        return len(self.params[0])
 
     def translate_to_values(self, param_is):
         """Take a tuple of indices and turn it into a list of values."""
