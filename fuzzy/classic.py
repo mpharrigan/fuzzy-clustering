@@ -26,6 +26,7 @@ def cluster(traj_list, n_clusters, n_medoid_iters=10, distance_cutoff=None, dim=
 def msm(traj_list, n_clusters, n_medoid_iters=10, lag_time=1, distance_cutoff=None):
     """Use classic clustering methods."""
 
+    print "Building a classic MSM"
     hkm = cluster(traj_list, n_clusters, n_medoid_iters, distance_cutoff)
     # centroids = hkm.get_generators_as_traj()
     # centroids_nf = centroids['XYZList'][:, 0, 0:dim]

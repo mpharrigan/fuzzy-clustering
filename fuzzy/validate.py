@@ -37,14 +37,14 @@ class Validator():
         self.stride = stride
         self.n_its = n_its
 
-        param_random_seeds = range(10)
-        param_nclusters = range(2, 20)
-        param_lagtimes = range(1, 30, 2)
+        param_random_seeds = range(8)
+        param_nclusters = range(2, 15)
+        param_lagtimes = range(1, 50, 3)
 
         # Debug
-        param_random_seeds = range(2)
-        param_nclusters = [2, 4]
-        param_lagtimes = [1, 10]
+#         param_random_seeds = range(2)
+#         param_nclusters = [10]
+#         param_lagtimes = [30]
 
         self.vd = ValidationData(n_its, param_random_seeds, param_nclusters, param_lagtimes)
 
@@ -71,7 +71,7 @@ class Validator():
         """Calculate results for MSM."""
         def tmat_func(traj_list, *params):
             # NOTE: I am accounting for number of parameter scaling here by multiplying number of clusters by 3
-            return classic.msm(traj_list, n_clusters=params[1] * 3, n_medoid_iters=10, lag_time=params[2])
+            return classic.msm(traj_list, n_clusters=params[1] * 3, n_medoid_iters=1, lag_time=params[2])
         def anal_func(t_matrix, *params):
             return analysis.get_implied_timescales(t_matrix, n_timescales=self.n_its, lag_time=params[2] * self.stride)
         def set_func(param_is, its):
@@ -104,6 +104,7 @@ class Validator():
         progress = 0
 
         for repeat_i in self.vd.get_repeats():
+            print "Loading trajectories"
             self.new_trajlist()
             for param_is in self.vd.get_param_iter():
                 # Add in repeat index
@@ -147,7 +148,7 @@ class ValidationData:
         self.analytic_its = np.zeros(n_its)
 
         its_shape = [len(param) for param in params]
-        self.n_permuts = np.product(its_shape[1:])
+        self.n_permuts = np.product(its_shape)
 
         its_shape.append(n_its)
         self.hmm_its = np.zeros(tuple(its_shape))
