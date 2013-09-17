@@ -99,7 +99,8 @@ def redo_mixture_model(optimized_hmm):
     n_features = means.shape[1]
     covars = np.array([matrices[1][j][1] for j in xrange(len(matrices[1]))])
     covars = np.reshape(covars, (n_components, n_features, n_features))
-    weights = np.array(matrices[2])
+    # weights = np.array(matrices[2])
+    weights = np.ones(len(matrices[2]))
 
     mm = mixture.GMM(n_components=n_components, params='', init_params='', covariance_type='full')
     mm.means_ = means

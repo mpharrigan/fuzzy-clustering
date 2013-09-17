@@ -70,12 +70,16 @@ class Dipeptide():
         mm_stride = 10
         sliding_window = True
         if k is not None:
-            t_matrix, hmm, self.mixture_model = mixture.hmm(self.traj_list, fix_k=k, lag_time=lag_time, mm_stride=mm_stride, sliding_window=sliding_window)
+            t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model = mixture.hmm(self.traj_list, fix_k=k, lag_time=lag_time, mm_stride=mm_stride, sliding_window=sliding_window)
         else:
-            t_matrix, hmm, self.mixture_model = mixture.hmm(self.traj_list, min_k=15, max_k=25, lag_time=lag_time, mm_stride=mm_stride, sliding_window=sliding_window)
-        self.t_matrix = t_matrix
-        self.hmm = hmm
-        self.redo_mm()
+            t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model = mixture.hmm(self.traj_list, min_k=15, max_k=25, lag_time=lag_time, mm_stride=mm_stride, sliding_window=sliding_window)
+
+        self.old_t_matrix = t_matrix
+        self.new_t_matrix = new_t_matrix
+        self.hmm = hidden_mm
+        self.first_mixture_model = first_mixture_model
+        self.opt_mixture_model = opt_mixture_model
+
         print "Done."
 
     def redo_mm(self):
@@ -97,9 +101,9 @@ class Dipeptide():
 
     def plot(self, new=True):
         if new:
-            mm = self.new_mixture_model
+            mm = self.opt_mixture_model
         else:
-            mm = self.mixture_model
+            mm = self.first_mixture_model
 
         means = mm.means_
         meansconv = np.zeros((means.shape[0], 2))
