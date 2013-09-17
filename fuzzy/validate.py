@@ -58,7 +58,7 @@ class Validator():
     def calculate_hmm(self):
         """Calculate results for HMM."""
         def tmat_func(traj_list, *params):
-            _, new_t_matrix, _, _, _ = mixture.hmm(traj_list, fix_k=params[1], lag_time=params[2], sliding_window=True)[0]
+            _, new_t_matrix, _, _, _ = mixture.hmm(traj_list, fix_k=params[1], lag_time=params[2], sliding_window=True, mm_stride=50)
             return new_t_matrix
         def anal_func(t_matrix, *params):
             return analysis.get_implied_timescales(t_matrix, n_timescales=self.n_its, lag_time=params[2] * self.stride)
@@ -70,7 +70,8 @@ class Validator():
     def calculate_msm(self):
         """Calculate results for MSM."""
         def tmat_func(traj_list, *params):
-            return classic.msm(traj_list, n_clusters=params[1], n_medoid_iters=10, lag_time=params[2])
+            # NOTE: I am accounting for number of parameter scaling here by multiplying number of clusters by 3
+            return classic.msm(traj_list, n_clusters=params[1] * 3, n_medoid_iters=10, lag_time=params[2])
         def anal_func(t_matrix, *params):
             return analysis.get_implied_timescales(t_matrix, n_timescales=self.n_its, lag_time=params[2] * self.stride)
         def set_func(param_is, its):
@@ -101,13 +102,19 @@ class Validator():
         assert len(tmat_funcs) == len(anal_funcs)
         assert len(anal_funcs) == len(set_funcs)
         progress = 0
-        for param_is in self.vd.get_param_iter():
-            param_values = self.vd.translate_to_values(param_is)
-            print "Using parameter values", param_values
-            print "Progress: %d/%d = %.2f%%" % (progress, self.vd.n_permuts, 100.0 * progress / self.vd.n_permuts)
 
-            for _ in self.vd.get_repeats():
-                self.new_trajlist()
+        for repeat_i in self.vd.get_repeats():
+            self.new_trajlist()
+            for param_is in self.vd.get_param_iter():
+                # Add in repeat index
+                pi = list(param_is)
+                pi.insert(0, repeat_i)
+                param_is = tuple(pi)
+
+                param_values = self.vd.translate_to_values(param_is)
+                print "Using parameter values", param_values
+                print "Progress: %d/%d = %.2f%%" % (progress, self.vd.n_permuts, 100.0 * progress / self.vd.n_permuts)
+
 
                 for tmat_func, anal_func, set_func in zip(tmat_funcs, anal_funcs, set_funcs):
                     t_matrix = tmat_func(self.traj_list, *param_values)
@@ -153,7 +160,7 @@ class ValidationData:
         return itertools.product(*[xrange(len(param)) for param in self.params[1:]])
 
     def get_repeats(self):
-        return len(self.params[0])
+        return xrange(len(self.params[0]))
 
     def translate_to_values(self, param_is):
         """Take a tuple of indices and turn it into a list of values."""
