@@ -7,7 +7,7 @@ import itertools
 from matplotlib import pyplot as pp
 
 
-def main(tmatrix_fn='transition_matrix_70.pickl', num_trajs=10, traj_len=500000, stride=1, n_its=6, results_fn='validation_results_3.pickl'):
+def main(tmatrix_fn='transition_matrix_70.pickl', num_trajs=10, traj_len=500000, stride=5, n_its=6, results_fn='validation_results_3.pickl'):
     """Call the calculation steps in order and write the results to disk."""
 
     validator = Validator(tmatrix_fn, num_trajs, traj_len, stride, n_its)
@@ -39,7 +39,7 @@ class Validator():
 
         param_random_seeds = range(8)
         param_nclusters = range(2, 15)
-        param_lagtimes = range(1, 50, 3)
+        param_lagtimes = range(1, 40, 4)
 
         # Debug
 #         param_random_seeds = range(2)

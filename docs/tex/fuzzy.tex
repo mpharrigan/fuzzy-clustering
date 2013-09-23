@@ -52,7 +52,7 @@ many fewer parameters.
 
 Deriving a transition matrix from non-overlapping hard states is trivial: for lag time
 $\tau$, if the conformation moves from state $i$ to state $j$, we increment the entry
-in the count matrix, $C_{ij}$. The transition matrix is a row-stochastic version of
+in the count matrix, $C_{ij}$. The transition matrix is a row-stochastic normalization of
 this count matrix.
 
 It is impossible to define counts in this way for \textit{fuzzy} states. One might
@@ -210,7 +210,7 @@ Re-running with 5 trajectories of 500,000 steps no stride.
 Further thoughts: Comparing number of clusters to number of clusters
 is kindof unfair. We should use the number of parameters. In MSM, the number
 of parameters is just $dim*k$. In the muller potential it is $(dim^2 + dim)*k$.
-Substitute 2 for dim and reduce, $k_{msm} = 3*k_{hmm}$
+Using dim=2 and reduce, $k_{msm} = 3*k_{hmm}$
 
 I'll do that in this new run.
 
