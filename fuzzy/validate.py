@@ -58,11 +58,12 @@ class Validator():
     def calculate_hmm(self):
         """Calculate results for HMM."""
         def tmat_func(traj_list, *params):
-            _, new_t_matrix, _, _, _ = mixture.hmm(traj_list, fix_k=params[1], lag_time=params[2], sliding_window=True, mm_stride=50)
-            return new_t_matrix
+            _, new_t_matrix, _, _, _, likelihood = mixture.hmm(traj_list, fix_k=params[1], lag_time=params[2], sliding_window=True, mm_stride=50)
+            return new_t_matrix, likelihood
         def anal_func(t_matrix, *params):
             return analysis.get_implied_timescales(t_matrix, n_timescales=self.n_its, lag_time=params[2] * self.stride)
-        def set_func(param_is, its):
+        def set_func(param_is, its, likelihood):
+            its = np.append(its, likelihood)
             self.vd.hmm_its[param_is] = its
 
         return tmat_func, anal_func, set_func
@@ -71,10 +72,11 @@ class Validator():
         """Calculate results for MSM."""
         def tmat_func(traj_list, *params):
             # NOTE: I am accounting for number of parameter scaling here by multiplying number of clusters by 3
-            return classic.msm(traj_list, n_clusters=params[1] * 3, n_medoid_iters=1, lag_time=params[2])
+            return classic.msm(traj_list, n_clusters=params[1] * 3, n_medoid_iters=1, lag_time=params[2]), 1
         def anal_func(t_matrix, *params):
             return analysis.get_implied_timescales(t_matrix, n_timescales=self.n_its, lag_time=params[2] * self.stride)
-        def set_func(param_is, its):
+        def set_func(param_is, its, likelihood):
+            its = np.append(its, likelihood)
             self.vd.msm_its[param_is] = its
 
         return tmat_func, anal_func, set_func
@@ -118,9 +120,9 @@ class Validator():
 
 
                 for tmat_func, anal_func, set_func in zip(tmat_funcs, anal_funcs, set_funcs):
-                    t_matrix = tmat_func(self.traj_list, *param_values)
+                    t_matrix, likelihood = tmat_func(self.traj_list, *param_values)
                     its = anal_func(t_matrix, *param_values)
-                    set_func(param_is, its)
+                    set_func(param_is, its, likelihood)
 
                 progress += 1
 

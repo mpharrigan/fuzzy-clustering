@@ -10,7 +10,6 @@
 \begin{document}
 
 \title{Hiddem Markov Models for Protein Dynamics}
-\author{Robert McGibbon, Matthew Harrigan}
 \maketitle
 
 \section{Motivation}
@@ -205,24 +204,22 @@ it would be beneficial to re-do this analysis without striding the data.
 \end{figure}
 
 \subsection{Right now}
-Re-running with 5 trajectories of 500,000 steps no stride.
+Re-running with 10 trajectories of 500,000 steps with stride of 5.
 
 Further thoughts: Comparing number of clusters to number of clusters
 is kindof unfair. We should use the number of parameters. In MSM, the number
 of parameters is just $dim*k$. In the muller potential it is $(dim^2 + dim)*k$.
-Using dim=2 and reduce, $k_{msm} = 3*k_{hmm}$
-
-I'll do that in this new run.
+Using dim=2 and reduce, $k_{msm} = 3*k_{hmm}$. I'm doing this in the new run.
 
 \section{Alanine Dipeptide}
 We have applied the HMM model to alanine dipeptide. It is acting fishy.
-I would like a better way to visualize the resulting emission distributions.
-It is possible that there is one that is just too wide.
+I would like a better way to visualize the resulting emission distributions;
+maybe as ellipses. It is possible that there is one that is just too wide.
 
 The HMM requires that conformations be vectorizable. This is hard to do. I'm suspecting
 that using sines and cosines is still messing things up. Those values are confined within
 -1 to 1, whereas the emissions use non-wrapping real numbers.
 
-Maybe using PCCA+ would be beneficial here.
+I'm going to try using atom-pair distances.
 
 \end{document}

@@ -177,7 +177,7 @@ def perform_optimization(hidden_mm, trajs, lag_time, sliding_window=True):
 
     print "Final baum welch likelihood: {}".format(likelihood)
 
-    return hidden_mm
+    return likelihood, hidden_mm
 
 
 def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
@@ -225,8 +225,9 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
     # Learn from trajectories in HMM
     print("Performing Baum-Welch algorithm")
     hidden_mm = get_hidden_markov_model(first_mixture_model, t_matrix)
-    hidden_mm = perform_optimization(hidden_mm, traj_list, lag_time=lag_time,
-                                    sliding_window=sliding_window)
+    likelihood, hidden_mm = perform_optimization(hidden_mm, traj_list,
+                                                 lag_time=lag_time,
+                                                 sliding_window=sliding_window)
 
     opt_mixture_model = redo_mixture_model(hidden_mm)
 
@@ -234,7 +235,7 @@ def hmm(traj_list, min_k=3, max_k=20, fix_k=None, lag_time=1,
     new_t_matrix = hidden_mm.asMatrices()[0]
     new_t_matrix = scipy.sparse.csr_matrix(new_t_matrix)
 
-    return t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model
+    return t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model, likelihood
 
 # def test_mixture(min_k=3, max_k=20, fix_k=None, n_eigen=4, lag_time=10):
 #     """Run a bunch of functions to test the various schemes."""
