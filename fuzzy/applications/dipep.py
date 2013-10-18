@@ -2,7 +2,7 @@
 
 from fuzzy import get_data
 import os
-from mdtraj.geometry import dihedral
+from mdtraj.geometry import dihedral, distance
 import numpy as np
 from fuzzy import mixture, analysis, classic, buildmsm
 import sklearn.mixture
@@ -13,6 +13,23 @@ class Dipeptide():
     INDICES = [
                [6, 8, 14, 16],  # Psi
                [4, 6, 8, 14]]  # Phi
+
+#     PAIRS = [
+#              [1, 8],
+#              [1, 18],
+#              [4, 8],
+#              [4, 15],
+#              [5, 10],
+#              [5, 16],
+#              [6, 14],
+#              [6, 16]]
+
+    PAIRS = [
+             [6, 16],
+             [4, 14],
+             [4, 16],
+             [5, 10]
+             ]
 
     def __init__(self, directory="/home/harrigan/projects/msmbuilder/Tutorial/"):
 
@@ -29,16 +46,20 @@ class Dipeptide():
             # Compute actual angles
             diheds = dihedral.compute_dihedrals(traj, Dipeptide.INDICES, opt=False)
 
-
             # Compute sin and cos
             num_diheds = diheds.shape[1]
             per_diheds = np.zeros((diheds.shape[0], num_diheds * 2))
             per_diheds[:, 0:num_diheds] = np.sin(diheds)
             per_diheds[:, num_diheds:num_diheds * 2] = np.cos(diheds)
 
+
+            distances = distance.compute_distances(traj, Dipeptide.PAIRS, periodic=True, opt=False)
+            distances = np.log(distances)
+
             # Save
-            traj_list.append(per_diheds)
+            traj_list.append(distances)
             traj_list_angles.append(diheds)
+            # traj_list.append(per_diheds)
 
         self.traj_list = traj_list
         self.traj_list_angles = traj_list_angles
@@ -70,15 +91,16 @@ class Dipeptide():
         mm_stride = 10
         sliding_window = True
         if k is not None:
-            t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model = mixture.hmm(self.traj_list, fix_k=k, lag_time=lag_time, mm_stride=mm_stride, sliding_window=sliding_window)
+            t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model, likelihood = mixture.hmm(self.traj_list, fix_k=k, lag_time=lag_time, mm_stride=mm_stride, sliding_window=sliding_window)
         else:
-            t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model = mixture.hmm(self.traj_list, min_k=15, max_k=25, lag_time=lag_time, mm_stride=mm_stride, sliding_window=sliding_window)
+            t_matrix, new_t_matrix, hidden_mm, first_mixture_model, opt_mixture_model, likelihood = mixture.hmm(self.traj_list, min_k=15, max_k=25, lag_time=lag_time, mm_stride=mm_stride, sliding_window=sliding_window)
 
         self.old_t_matrix = t_matrix
         self.new_t_matrix = new_t_matrix
         self.hmm = hidden_mm
         self.first_mixture_model = first_mixture_model
         self.opt_mixture_model = opt_mixture_model
+        self.likelihood = likelihood
 
         print "Done."
 
@@ -105,11 +127,11 @@ class Dipeptide():
         else:
             mm = self.first_mixture_model
 
-        means = mm.means_
-        meansconv = np.zeros((means.shape[0], 2))
-        meansconv[:, 0] = _from_sincos(means[:, ::2])
-        meansconv[:, 1] = _from_sincos(means[:, 1::2])
-        meansconv *= (180. / np.pi)
+#         means = mm.means_
+#         meansconv = np.zeros((means.shape[0], 2))
+#         meansconv[:, 0] = _from_sincos(means[:, ::2])
+#         meansconv[:, 1] = _from_sincos(means[:, 1::2])
+#         meansconv *= (180. / np.pi)
 
 #         meansconv = self.mixture_model.means_ * (180. / np.pi)
 
@@ -122,7 +144,7 @@ class Dipeptide():
             analysis.plot_points_with_alpha(traj_act[:, [1, 0]], memberships)
 
         # Plot means
-        pp.scatter(meansconv[:, 1], meansconv[:, 0], facecolors='w', edgecolors='k', s=100, zorder=10)
+        # pp.scatter(meansconv[:, 1], meansconv[:, 0], facecolors='w', edgecolors='k', s=100, zorder=10)
 
     def plot_classic(self, ass, n_clusters):
         means = self.mixture_model.means_

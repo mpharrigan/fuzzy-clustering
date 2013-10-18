@@ -209,7 +209,8 @@ Re-running with 10 trajectories of 500,000 steps with stride of 5.
 Further thoughts: Comparing number of clusters to number of clusters
 is kindof unfair. We should use the number of parameters. In MSM, the number
 of parameters is just $dim*k$. In the muller potential it is $(dim^2 + dim)*k$.
-Using dim=2 and reduce, $k_{msm} = 3*k_{hmm}$. I'm doing this in the new run.
+The HMM uses a factor of $dim+1$ more parameters than msm for a given number of clusters
+Using dim=2, $k_{msm} = 3*k_{hmm}$. I'm doing this in the new run.
 
 \section{Alanine Dipeptide}
 We have applied the HMM model to alanine dipeptide. It is acting fishy.
@@ -221,5 +222,11 @@ that using sines and cosines is still messing things up. Those values are confin
 -1 to 1, whereas the emissions use non-wrapping real numbers.
 
 I'm going to try using atom-pair distances.
+
+\section{Other thoughts}
+
+Perhaps inject some noise into the baum welch to find a better maximum.
+
+Using R is probably of little benefit.
 
 \end{document}
